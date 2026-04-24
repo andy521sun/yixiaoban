@@ -1,0 +1,55 @@
+name: 编译 APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # 可手动触发
+
+jobs:
+  build-patient:
+    name: 编译患者端 APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 安装 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.x'
+      
+      - name: 获取依赖
+        run: cd mobile/patient_app && flutter pub get
+      
+      - name: 编译 APK (arm64)
+        run: cd mobile/patient_app && flutter build apk --release --target-platform android-arm64
+      
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 医小伴-患者端
+          path: mobile/patient_app/build/app/outputs/flutter-apk/app-release.apk
+
+  build-companion:
+    name: 编译陪诊师端 APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 安装 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.x'
+      
+      - name: 获取依赖
+        run: cd mobile/companion_app && flutter pub get
+      
+      - name: 编译 APK (arm64)
+        run: cd mobile/companion_app && flutter build apk --release --target-platform android-arm64
+      
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 医小伴-陪诊师端
+          path: mobile/companion_app/build/app/outputs/flutter-apk/app-release.apk
