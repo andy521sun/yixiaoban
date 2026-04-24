@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>医小伴 - API 服务</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #333; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+    .card { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); margin-bottom: 24px; }
+    h1 { font-size: 28px; color: #1a1a2e; margin-bottom: 8px; }
+    h1 small { font-size: 14px; color: #666; font-weight: normal; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 24px 0; }
+    .stat-card { background: #f8f9ff; border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-card .value { font-size: 28px; font-weight: bold; color: #667eea; }
+    .stat-card .label { font-size: 12px; color: #888; margin-top: 4px; }
+    .endpoint { display: flex; justify-content: space-between; padding: 12px 16px; background: #f8f9ff; border-radius: 8px; margin: 8px 0; font-size: 13px; }
+    .endpoint .method { font-weight: 600; color: #667eea; min-width: 60px; }
+    .endpoint .path { color: #555; font-family: 'Courier New', monospace; }
+    .endpoint .desc { color: #999; font-size: 12px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .btn { display: inline-block; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover { background: #5a67d8; }
+    .btn-outline { border: 1px solid #667eea; color: #667eea; }
+    .btn-outline:hover { background: #667eea; color: #fff; }
+    .test-accounts { margin: 20px 0; }
+    .test-accounts table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .test-accounts th, .test-accounts td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .test-accounts th { color: #888; font-weight: 500; }
+    footer { text-align: center; padding: 24px; color: rgba(255,255,255,0.6); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>🏥 医小伴 <small>陪诊服务平台</small></h1>
+      <p class="subtitle">API 服务已运行 · 生产环境</p>
+      <div class="status-grid" id="status">
+        <div class="stat-card"><div class="value" id="hospitals">-</div><div class="label">合作医院</div></div>
+        <div class="stat-card"><div class="value" id="companions">-</div><div class="label">注册陪诊师</div></div>
+        <div class="stat-card"><div class="value" id="users">-</div><div class="label">平台用户</div></div>
+        <div class="stat-card"><div class="value" id="orders">-</div><div class="label">服务订单</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:16px;">📋 API 接口一览</h2>
+      <div class="endpoint"><span><span class="method">GET</span> <span class="path">/health</span></span><span class="desc">健康检查</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/auth/login</span></span><span class="desc">用户登录</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/auth/register</span></span><span class="desc">用户注册</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/auth/forgot-password</span></span><span class="desc">发送重置验证码</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/auth/reset-password</span></span><span class="desc">重置密码</span></div>
+      <div class="endpoint"><span><span class="method">GET</span> <span class="path">/api/hospitals</span></span><span class="desc">医院列表</span></div>
+      <div class="endpoint"><span><span class="method">GET</span> <span class="path">/api/companions</span></span><span class="desc">陪诊师列表</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/orders</span></span><span class="desc">创建订单</span></div>
+      <div class="endpoint"><span><span class="method">GET</span> <span class="path">/api/orders</span></span><span class="desc">我的订单</span></div>
+      <div class="endpoint"><span><span class="method">GET</span> <span class="path">/api/companion/orders/available</span></span><span class="desc">待接订单（陪诊师）</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/companion/orders/:id/accept</span></span><span class="desc">接单</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/companion/orders/:id/start</span></span><span class="desc">开始服务</span></div>
+      <div class="endpoint"><span><span class="method">POST</span> <span class="path">/api/companion/orders/:id/complete</span></span><span class="desc">完成服务</span></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:16px;">👤 测试账号</h2>
+      <div class="test-accounts">
+        <table>
+          <tr><th>手机号</th><th>姓名</th><th>角色</th><th>密码</th></tr>
+          <tr><td>13800138000</td><td>测试用户</td><td>患者</td><td rowspan="8" style="font-family:monospace">123456</td></tr>
+          <tr><td>13800138001</td><td>张先生</td><td>患者</td></tr>
+          <tr><td>13800138002</td><td>李女士</td><td>患者</td></tr>
+          <tr><td>13800138003</td><td>王阿姨</td><td>患者</td></tr>
+          <tr><td>13800000000</td><td>系统管理员</td><td>管理员</td></tr>
+          <tr><td>13900139001</td><td>张护士（张美丽）</td><td>陪诊师</td></tr>
+          <tr><td>13900139002</td><td>李医生（李建国）</td><td>陪诊师</td></tr>
+          <tr><td>13900139003</td><td>王阿姨</td><td>陪诊师</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <footer>医小伴陪诊服务平台 v1.0 · 温暖就医，专业陪伴</footer>
+  </div>
+
+  <script>
+    // 加载实时状态
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api');
+        const data = await res.json();
+        document.title = '医小伴 - ' + data.version;
+      } catch(e) {}
+      
+      try {
+        // 获取统计数据（需要admin登录）
+        const login = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({phone:'13800000000', password:'123456'})
+        });
+        const loginData = await login.json();
+        if (loginData.success) {
+          const dRes = await fetch('/api/admin/dashboard', {
+            headers: {'Authorization': 'Bearer ' + loginData.data.token}
+          });
+          const dData = await dRes.json();
+          if (dData.success) {
+            const s = dData.data.stats;
+            document.getElementById('users').textContent = s.total_users;
+            document.getElementById('orders').textContent = s.total_orders;
+          }
+        }
+      } catch(e) {}
+      
+      try {
+        const hRes = await fetch('/api/hospitals');
+        const hData = await hRes.json();
+        document.getElementById('hospitals').textContent = hData.data?.length || 0;
+      } catch(e) {}
+      
+      try {
+        const cRes = await fetch('/api/companions');
+        const cData = await cRes.json();
+        document.getElementById('companions').textContent = cData.data?.length || 0;
+      } catch(e) {}
+    }
+    loadStatus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>医小伴APP - 监控状态</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .healthy { background-color: #d4edda; color: #155724; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .timestamp { color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🏥 医小伴APP监控状态</h1>
+    <p class="timestamp">最后更新: <span id="lastUpdate">加载中...</span></p>
+    
+    <div class="status" id="paymentStatus">
+        <h3>💰 支付服务器 (端口: 3003)</h3>
+        <p>状态: 检查中...</p>
+        <p>运行时间: --</p>
+    </div>
+    
+    <div class="status" id="companionStatus">
+        <h3>👨‍⚕️ 陪诊师服务器 (端口: 3004)</h3>
+        <p>状态: 检查中...</p>
+        <p>运行时间: --</p>
+    </div>
+    
+    <div class="status" id="codeStatus">
+        <h3>💻 代码提交状态</h3>
+        <p>今日提交: 检查中...</p>
+        <p>最后修改: --</p>
+    </div>
+    
+    <div class="status" id="progressStatus">
+        <h3>📊 项目进度</h3>
+        <p>总体进度: 40%</p>
+        <p>目标日期: 2026年4月28日</p>
+        <p>剩余天数: 8天</p>
+    </div>
+    
+    <script>
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+                    
+                    // 更新支付服务器状态
+                    const paymentDiv = document.getElementById('paymentStatus');
+                    paymentDiv.className = 'status ' + (data.payment.healthy ? 'healthy' : 'error');
+                    paymentDiv.innerHTML = `
+                        <h3>💰 支付服务器 (端口: 3003)</h3>
+                        <p>状态: ${data.payment.healthy ? '✅ 正常' : '❌ 异常'}</p>
+                        <p>运行时间: ${data.payment.uptime || '--'}</p>
+                    `;
+                    
+                    // 更新陪诊师服务器状态
+                    const companionDiv = document.getElementById('companionStatus');
+                    companionDiv.className = 'status ' + (data.companion.healthy ? 'healthy' : 'error');
+                    companionDiv.innerHTML = `
+                        <h3>👨‍⚕️ 陪诊师服务器 (端口: 3004)</h3>
+                        <p>状态: ${data.companion.healthy ? '✅ 正常' : '❌ 异常'}</p>
+                        <p>运行时间: ${data.companion.uptime || '--'}</p>
+                    `;
+                    
+                    // 更新代码状态
+                    const codeDiv = document.getElementById('codeStatus');
+                    const hasCode = data.code.has_today_commits;
+                    codeDiv.className = 'status ' + (hasCode ? 'healthy' : 'warning');
+                    codeDiv.innerHTML = `
+                        <h3>💻 代码提交状态</h3>
+                        <p>今日提交: ${hasCode ? '✅ 有提交' : '⚠️ 无提交'}</p>
+                        <p>最后修改: ${data.code.last_modified || '--'}</p>
+                    `;
+                })
+                .catch(error => {
+                    console.error('状态更新失败:', error);
+                    document.getElementById('lastUpdate').textContent = '更新失败: ' + new Date().toLocaleString();
+                });
+        }
+        
+        // 初始加载
+        updateStatus();
+        // 每分钟更新一次
+        setInterval(updateStatus, 60000);
+    </script>
+</body>
+</html>

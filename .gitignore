@@ -1,0 +1,35 @@
+# 敏感
+.env
+*.log
+*.pid
+
+# 构建
+node_modules/
+build/
+dist/
+
+# Flutter缓存
+mobile/**/build/
+mobile/**/.gradle/
+mobile/**/.dart_tool/
+mobile/**/.packages
+mobile/**/pubspec.lock
+mobile/**/android/.gradle/
+mobile/**/android/build/
+mobile/**/linux/
+
+# 备份/临时
+*.backup
+*.bak
+*.tar.gz
+*.zip
+*.hprof
+tmp/
+
+# 系统
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/

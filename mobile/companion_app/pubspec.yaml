@@ -1,0 +1,29 @@
+name: companion_app
+description: 医小伴陪诊师端应用 - 最小化版本
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # 绝对必要的依赖
+  http: ^1.2.2  # 网络请求
+  shared_preferences: ^2.2.2  # 本地存储
+  intl: ^0.18.1  # 国际化
+  provider: ^6.1.2  # 状态管理
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  test: ^1.24.0  # 单元测试
+
+flutter:
+  uses-material-design: true
+  
+  # 最小化资源
+  assets:
+    - assets/placeholder/

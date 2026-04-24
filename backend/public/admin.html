@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>医小伴 - 管理后台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; min-height: 100vh; font-size: 14px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 16px; position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 18px; }
+    .header .info { font-size: 12px; opacity: 0.85; }
+    .container { padding: 12px; max-width: 800px; margin: 0 auto; }
+    .tabs { display: flex; background: white; border-bottom: 1px solid #eee; position: sticky; top: 52px; z-index: 99; }
+    .tab { flex: 1; padding: 12px 8px; text-align: center; font-size: 14px; font-weight: 600; color: #888; border: none; background: white; cursor: pointer; border-bottom: 3px solid transparent; }
+    .tab.active { color: #667eea; border-bottom-color: #667eea; }
+    .card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 12px; display: none; }
+    .card.active { display: block; }
+    .card h2 { font-size: 16px; margin-bottom: 12px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .stat-card { padding: 16px; border-radius: 12px; text-align: center; color: white; }
+    .stat-card .num { font-size: 26px; font-weight: bold; }
+    .stat-card .label { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+    .list-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+    .list-item:last-child { border-bottom: none; }
+    .row1 { display: flex; justify-content: space-between; align-items: center; }
+    .row1 .name { font-size: 15px; font-weight: 600; }
+    .info { font-size: 12px; color: #888; margin-top: 3px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 11px; }
+    .bg-green { background: #d4edda; color: #155724; }
+    .bg-yellow { background: #fff3cd; color: #856404; }
+    .bg-red { background: #f8d7da; color: #721c24; }
+    .bg-blue { background: #d6e4ff; color: #1a3c7a; }
+    .bg-gray { background: #e9ecef; color: #495057; }
+    .btn { display: inline-block; padding: 6px 12px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .action-row { display: flex; gap: 6px; margin-top: 6px; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+    .toolbar input, .toolbar select { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white; }
+    .toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 8px; color: white; font-size: 14px; display: none; z-index: 9999; text-align: center; max-width: 80%; }
+    .toast-success { background: #28a745; }
+    .toast-error { background: #dc3545; }
+    .empty-state { text-align: center; padding: 40px 0; color: #aaa; font-size: 14px; }
+    .loading { text-align: center; padding: 30px; color: #888; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: flex-end; }
+    .modal { background: white; border-radius: 16px 16px 0 0; padding: 20px 16px; width: 100%; max-height: 85vh; overflow-y: auto; }
+    .modal h3 { font-size: 17px; margin-bottom: 16px; text-align: center; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+    .field input, .field textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    .modal .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+    .modal .btn-row .btn { flex: 1; text-align: center; padding: 12px; font-size: 15px; }
+  </style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<div class="header">
+  <h1>🏥 医小伴</h1>
+  <span class="info" id="userInfo">加载中...</span>
+</div>
+<div class="tabs" id="tabBar">
+  <div class="tab active" data-tab="stats">📊 概览</div>
+  <div class="tab" data-tab="companions">👥 陪诊师</div>
+  <div class="tab" data-tab="users">👤 用户</div>
+  <div class="tab" data-tab="orders">📋 订单</div>
+</div>
+<div class="container">
+  <!-- 概览 -->
+  <div class="card active" id="card-stats">
+    <div class="stats-grid" id="statsGrid"></div>
+  </div>
+  <!-- 陪诊师 -->
+  <div class="card" id="card-companions">
+    <h2>👥 陪诊师管理</h2>
+    <div class="toolbar"><input type="text" id="compSearch" placeholder="搜索..."><button class="btn btn-primary" id="addCompBtn">+添加</button></div>
+    <div id="compList"><div class="loading">加载中...</div></div>
+  </div>
+  <!-- 用户 -->
+  <div class="card" id="card-users">
+    <h2>👤 用户管理</h2>
+    <div class="toolbar"><input type="text" id="userSearch" placeholder="搜索..."><button class="btn btn-primary" id="refreshUserBtn">🔄</button></div>
+    <div id="userList"><div class="loading">加载中...</div></div>
+  </div>
+  <!-- 订单 -->
+  <div class="card" id="card-orders">
+    <h2>📋 订单管理</h2>
+    <div class="toolbar"><select id="orderFilter"><option value="">全部</option><option value="pending">待确认</option><option value="confirmed">已确认</option><option value="in_progress">服务中</option><option value="completed">已完成</option></select></div>
+    <div id="orderList"><div class="loading">加载中...</div></div>
+  </div>
+</div>
+<!-- 编辑弹窗 -->
+<div class="modal-overlay" id="compModal">
+  <div class="modal">
+    <h3 id="modalTitle">编辑陪诊师</h3>
+    <div class="field"><label>姓名</label><input id="fName"></div>
+    <div class="field"><label>手机号</label><input id="fPhone" type="tel"></div>
+    <div class="field"><label>时薪(元)</label><input id="fRate" type="number"></div>
+    <div class="field"><label>经验(年)</label><input id="fExp" type="number"></div>
+    <div class="field"><label>专长(逗号分隔)</label><input id="fSpec"></div>
+    <div class="field"><label>简介</label><textarea id="fIntro" rows="2"></textarea></div>
+    <input type="hidden" id="fId">
+    <div class="btn-row"><button class="btn btn-secondary" id="modalCancel">取消</button><button class="btn btn-primary" id="modalSave">保存</button></div>
+  </div>
+</div>
+<script>
+(function(){
+'use strict';
+function $(id){return document.getElementById(id);}
+function toast(msg,t){var e=$('toast');e.textContent=msg;e.className='toast toast-'+(t||'success');e.style.display='block';setTimeout(function(){e.style.display='none';},3000);}
+
+var token='',adminName='';
+
+// 登录
+async function login(){
+  try{
+    var r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:'13800000000',password:'123456'})});
+    var d=await r.json();
+    if(d.success){token=d.data.token;adminName=d.data.user?.name||'管理员';$('userInfo').textContent='👤 '+adminName;loadAll();}
+    else{$('userInfo').textContent='❌ 登录失败';toast(d.message,'error');}
+  }catch(e){$('userInfo').textContent='❌ 连接失败';toast(e.message,'error');}
+}
+
+// API
+async function api(method,path,body){
+  var opts={method:method,headers:{}};
+  if(body){opts.body=JSON.stringify(body);opts.headers['Content-Type']='application/json';}
+  if(token)opts.headers['Authorization']='Bearer '+token;
+  return await (await fetch(path,opts)).json();
+}
+
+// Tab切换
+var tabs=document.querySelectorAll('.tab');
+for(var i=0;i<tabs.length;i++){
+  (function(tab){
+    tab.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+      document.querySelectorAll('.card').forEach(function(c){c.classList.remove('active');});
+      tab.classList.add('active');
+      var name=tab.getAttribute('data-tab');
+      $('card-'+name).classList.add('active');
+      if(name==='stats')loadStats();
+      else if(name==='companions')loadCompanions();
+      else if(name==='users')loadUsers();
+      else if(name==='orders')loadOrders();
+    });
+  })(tabs[i]);
+}
+
+// 概览
+async function loadStats(){
+  try{
+    var d=await api('GET','/api/admin/dashboard');
+    if(!d.success){$('statsGrid').innerHTML='<div class="empty-state">加载失败</div>';return;}
+    var s=d.data.stats||{};
+    var colors=['#667eea,#764ba2','#f093fb,#f5576c','#4facfe,#00f2fe','#43e97b,#38f9d7','#fa709a,#fee140','#a18cd1,#fbc2eb'];
+    var items=[
+      {label:'总用户',val:s.total_users||'-'},
+      {label:'陪诊师',val:s.total_companions||'-'},
+      {label:'总订单',val:s.total_orders||'-'},
+      {label:'总营收',val:'¥'+(s.total_revenue||0)},
+      {label:'已完成',val:s.completed_orders||'-'},
+      {label:'服务中',val:s.active_orders||'-'}
+    ];
+    var html='';
+    for(var i=0;i<items.length;i++){
+      html+='<div class="stat-card" style="background:linear-gradient(135deg,'+colors[i]+')"><div class="num">'+items[i].val+'</div><div class="label">'+items[i].label+'</div></div>';
+    }
+    $('statsGrid').innerHTML=html;
+  }catch(e){toast('加载失败','error');}
+}
+
+// 陪诊师
+async function loadCompanions(){
+  var q=$('compSearch').value;
+  try{
+    var d=await api('GET','/api/admin/companions?search='+encodeURIComponent(q));
+    if(!d.success){$('compList').innerHTML='<div class="empty-state">加载失败</div>';return;}
+    var list=d.data||[];
+    if(!list.length){$('compList').innerHTML='<div class="empty-state">暂无陪诊师</div>';return;}
+    var html='';
+    for(var i=0;i<list.length;i++){
+      var c=list[i];
+      var st=c.is_available==1?'bg-green':'bg-red';
+      var stt=c.is_available==1?'在线':'离线';
+      html+='<div class="list-item">'+
+        '<div class="row1"><span class="name">'+(c.real_name||c.name||'-')+'</span><span><span class="badge '+st+'">'+stt+'</span> <span class="badge bg-blue">¥'+(c.hourly_rate||0)+'</span></span></div>'+
+        '<div class="info">📞 '+(c.phone||'-')+' · ⭐'+(c.average_rating||'-')+' · '+(c.experience_years||0)+'年 · '+(c.service_count||0)+'单</div>'+
+        '<div class="action-row"><button class="btn btn-primary" onclick="editComp(\''+c.id+'\')">✏️ 编辑</button><button class="btn btn-danger" onclick="delComp(\''+c.id+'\',\''+(c.real_name||'')+'\')">🗑️ 删除</button></div>'+
+        '</div>';
+    }
+    $('compList').innerHTML=html;
+  }catch(e){toast('加载失败','error');}
+}
+
+window.editComp=async function(id){
+  try{
+    var d=await api('GET','/api/admin/companions/'+id);
+    if(d.success){
+      var c=d.data;
+      $('modalTitle').textContent='编辑陪诊师';
+      $('fId').value=id;
+      $('fName').value=c.real_name||'';
+      $('fPhone').value=c.phone||'';
+      $('fRate').value=c.hourly_rate||200;
+      $('fExp').value=c.experience_years||1;
+      var spec=c.specialty||'';
+      try{if(spec.startsWith('['))spec=JSON.parse(spec).join(',');}catch(e){}
+      $('fSpec').value=spec;
+      $('fIntro').value=c.introduction||'';
+      $('compModal').style.display='flex';
+    }
+  }catch(e){toast('加载失败','error');}
+};
+
+window.delComp=async function(id,name){
+  if(!confirm('确认删除陪诊师「'+name+'」？'))return;
+  var d=await api('DELETE','/api/admin/companions/'+id);
+  if(d.success){toast('删除成功');loadCompanions();}
+  else toast(d.message||'删除失败','error');
+};
+
+async function saveComp(){
+  var id=$('fId').value;
+  var data={real_name:$('fName').value,phone:$('fPhone').value,id_card:'',hourly_rate:parseFloat($('fRate').value)||200,experience_years:parseInt($('fExp').value)||1,specialty:$('fSpec').value,introduction:$('fIntro').value};
+  if(!data.real_name||!data.phone){toast('姓名和手机号不能为空','error');return;}
+  var d=id?await api('PUT','/api/admin/companions/'+id,data):await api('POST','/api/admin/companions',data);
+  if(d.success){toast(id?'更新成功':'添加成功');$('compModal').style.display='none';loadCompanions();}
+  else toast(d.message||'操作失败','error');
+}
+
+$('addCompBtn').addEventListener('click',function(){
+  $('modalTitle').textContent='添加陪诊师';
+  $('fId').value='';$('fName').value='';$('fPhone').value='';$('fRate').value='200';$('fExp').value='1';$('fSpec').value='';$('fIntro').value='';
+  $('compModal').style.display='flex';
+});
+$('modalSave').addEventListener('click',saveComp);
+$('modalCancel').addEventListener('click',function(){$('compModal').style.display='none';});
+$('compModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
+
+// 用户
+async function loadUsers(){
+  var q=$('userSearch').value;
+  try{
+    var d=await api('GET','/api/admin/users?search='+encodeURIComponent(q));
+    if(!d.success){$('userList').innerHTML='<div class="empty-state">加载失败</div>';return;}
+    var list=d.data?.users||[];
+    if(!list.length){$('userList').innerHTML='<div class="empty-state">暂无用户</div>';return;}
+    var rm={patient:'患者',companion:'陪诊师',admin:'管理员'};
+    var html='';
+    for(var i=0;i<list.length;i++){
+      var u=list[i];
+      html+='<div class="list-item"><div class="row1"><span class="name">'+(u.name||'-')+'</span><span class="badge bg-blue">'+(rm[u.role]||u.role)+'</span></div><div class="info">📞 '+(u.phone||'-')+' · 🕐 '+(u.created_at?u.created_at.split('T')[0]:'-')+'</div></div>';
+    }
+    $('userList').innerHTML=html;
+  }catch(e){toast('加载失败','error');}
+}
+
+// 订单
+async function loadOrders(){
+  var f=$('orderFilter').value;
+  try{
+    var url='/api/admin/orders'+(f?'?status='+f:'');
+    var d=await api('GET',url);
+    if(!d.success){$('orderList').innerHTML='<div class="empty-state">加载失败</div>';return;}
+    var list=d.data?.orders||[];
+    if(!list.length){$('orderList').innerHTML='<div class="empty-state">暂无订单</div>';return;}
+    var sm={pending:'待确认',confirmed:'已确认',in_progress:'服务中',completed:'已完成',cancelled:'已取消'};
+    var sb={pending:'bg-yellow',confirmed:'bg-blue',in_progress:'bg-green',completed:'bg-gray',cancelled:'bg-red'};
+    var html='';
+    for(var i=0;i<list.length;i++){
+      var o=list[i];
+      var ah='';
+      if(o.status==='confirmed')ah='<button class="btn btn-success" onclick="orderAction(\''+o.id+'\',\'start\')">▶️ 开始</button>';
+      else if(o.status==='in_progress')ah='<button class="btn btn-primary" onclick="orderAction(\''+o.id+'\',\'complete\')">✅ 完成</button>';
+      html+='<div class="list-item"><div class="row1"><span class="name">'+(o.patient_name||'-')+' → '+(o.hospital_name||'-')+'</span><span class="badge '+(sb[o.status]||'')+'">'+(sm[o.status]||o.status)+'</span></div>'+
+        '<div class="info">👤 '+(o.companion_name||'待分配')+' · ¥'+(o.total_amount||o.price||0)+' · 📅 '+(o.appointment_date||'')+'</div>'+
+        (ah?'<div class="action-row">'+ah+'</div>':'')+'</div>';
+    }
+    $('orderList').innerHTML=html;
+  }catch(e){toast('加载失败','error');}
+}
+
+window.orderAction=async function(id,action){
+  var d=await api('POST','/api/admin/orders/'+id+'/'+action);
+  if(d.success){toast(d.message||'操作成功');loadOrders();}
+  else toast(d.message||'操作失败','error');
+};
+
+// 搜索防抖
+$('compSearch').addEventListener('input',function(){clearTimeout(this._timer);this._timer=setTimeout(loadCompanions,300);});
+$('userSearch').addEventListener('input',function(){clearTimeout(this._timer);this._timer=setTimeout(loadUsers,300);});
+$('orderFilter').addEventListener('change',loadOrders);
+$('refreshUserBtn').addEventListener('click',loadUsers);
+
+function loadAll(){loadStats();loadCompanions();loadUsers();loadOrders();}
+
+login();
+})();
+</script>
+</body>
+</html>

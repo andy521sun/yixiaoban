@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>医小伴管理后台</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏥</text></svg>">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f0f2f5;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    #app {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .loading-logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+    
+    .loading-text {
+      font-size: 24px;
+      font-weight: 300;
+      margin-bottom: 30px;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    .loading-details {
+      margin-top: 20px;
+      font-size: 14px;
+      opacity: 0.8;
+      text-align: center;
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="loading-container">
+      <div class="loading-logo">🏥</div>
+      <div class="loading-text">医小伴管理后台</div>
+      <div class="loading-spinner"></div>
+      <div class="loading-details">
+        正在加载应用资源，请稍候...
+        <br>
+        <small>如果长时间未加载，请检查网络连接</small>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.js"></script>
+  
+  <script>
+    // 移除加载动画
+    window.addEventListener('load', function() {
+      const loadingContainer = document.querySelector('.loading-container')
+      if (loadingContainer) {
+        setTimeout(() => {
+          loadingContainer.style.opacity = '0'
+          loadingContainer.style.transition = 'opacity 0.5s ease'
+          setTimeout(() => {
+            loadingContainer.style.display = 'none'
+          }, 500)
+        }, 1000)
+      }
+    })
+    
+    // 错误处理
+    window.addEventListener('error', function(event) {
+      console.error('页面错误:', event.error)
+      const loadingContainer = document.querySelector('.loading-container')
+      if (loadingContainer) {
+        loadingContainer.innerHTML = `
+          <div class="loading-logo">⚠️</div>
+          <div class="loading-text">加载失败</div>
+          <div class="loading-details">
+            应用加载过程中出现错误
+            <br>
+            <small>请刷新页面重试</small>
+            <br><br>
+            <button onclick="location.reload()" style="
+              background: white;
+              color: #667eea;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 14px;
+            ">刷新页面</button>
+          </div>
+        `
+      }
+    })
+  </script>
+</body>
+</html>

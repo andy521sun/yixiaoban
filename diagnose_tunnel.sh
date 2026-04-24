@@ -1,0 +1,57 @@
+#!/bin/bash
+
+echo "================================================"
+echo "🔍 SSH隧道诊断工具"
+echo "================================================"
+
+echo ""
+echo "1. 服务器端服务状态:"
+echo "   端口 7070: $(netstat -tln | grep ':7070' | wc -l) 个监听"
+echo "   端口 8080: $(netstat -tln | grep ':8080' | wc -l) 个监听"
+echo "   端口 9090: $(netstat -tln | grep ':9090' | wc -l) 个监听"
+echo "   端口 3000: $(netstat -tln | grep ':3000' | wc -l) 个监听"
+
+echo ""
+echo "2. 本地连接测试:"
+curl -s -o /dev/null -w "localhost:7070 -> %{http_code}\n" http://localhost:7070/direct_test.html
+curl -s -o /dev/null -w "localhost:8080 -> %{http_code}\n" http://localhost:8080
+curl -s -o /dev/null -w "localhost:3000/health -> %{http_code}\n" http://localhost:3000/health
+
+echo ""
+echo "3. 服务进程:"
+ps aux | grep -E "(python.*http.server|node.*server)" | grep -v grep
+
+echo ""
+echo "================================================"
+echo "🎯 Windows端检查命令:"
+echo "================================================"
+echo ""
+echo "在PowerShell中执行:"
+echo ""
+echo "# 1. 检查端口占用"
+echo "netstat -ano | findstr :7070"
+echo "netstat -ano | findstr :8080"
+echo "netstat -ano | findstr :9090"
+echo ""
+echo "# 2. 如果端口被占用，停止进程"
+echo "Stop-Process -Id (Get-NetTCPConnection -LocalPort 7070).OwningProcess -Force"
+echo ""
+echo "# 3. 使用Windows SSH测试"
+echo "ssh -L 7070:localhost:7070 root@122.51.179.136"
+echo "# 密码: yixiaoban123"
+echo ""
+echo "# 4. 测试连接"
+echo "Test-NetConnection localhost -Port 7070"
+echo ""
+echo "================================================"
+echo "🔧 PuTTY配置检查:"
+echo "================================================"
+echo "1. Connection → SSH → Tunnels"
+echo "2. 确保有以下隧道:"
+echo "   L7070 localhost:7070"
+echo "   L8080 localhost:8080"
+echo "   L9090 localhost:9090"
+echo "   L3000 localhost:3000"
+echo "3. 每个都要点击Add"
+echo "4. 保存配置"
+echo "================================================"

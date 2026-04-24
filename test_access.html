@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>医小伴陪诊APP - 访问测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .success { background: #10b981; }
+        .error { background: #ef4444; }
+        .link {
+            color: #93c5fd;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+        .test-btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        .test-btn:hover {
+            background: #4338ca;
+        }
+        .result {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏥 医小伴陪诊APP - 访问测试</h1>
+    
+    <div class="card">
+        <h2>📡 服务器信息</h2>
+        <p><strong>服务器IP:</strong> 10.0.0.12</p>
+        <p><strong>主机名:</strong> VM-0-12-ubuntu</p>
+        <p><strong>时间:</strong> <span id="current-time"></span></p>
+    </div>
+    
+    <div class="card">
+        <h2>🔗 服务访问链接</h2>
+        
+        <div class="service">
+            <h3>1. 管理后台 (端口: 8080)</h3>
+            <p>
+                <span class="status" id="admin-status">测试中...</span>
+                <a href="http://10.0.0.12:8080" class="link" target="_blank">http://10.0.0.12:8080</a>
+            </p>
+            <button class="test-btn" onclick="testService('admin')">测试连接</button>
+            <div class="result" id="admin-result"></div>
+        </div>
+        
+        <div class="service">
+            <h3>2. API后端服务 (端口: 3000)</h3>
+            <p>
+                <span class="status" id="api-status">测试中...</span>
+                <a href="http://10.0.0.12:3000/health" class="link" target="_blank">http://10.0.0.12:3000/health</a>
+            </p>
+            <button class="test-btn" onclick="testService('api')">测试健康检查</button>
+            <button class="test-btn" onclick="testService('api-docs')">测试API文档</button>
+            <div class="result" id="api-result"></div>
+        </div>
+        
+        <div class="service">
+            <h3>3. 本地访问 (如果服务器就是你的电脑)</h3>
+            <p>
+                <a href="http://localhost:8080" class="link" target="_blank">http://localhost:8080</a> - 管理后台
+            </p>
+            <p>
+                <a href="http://localhost:3000/health" class="link" target="_blank">http://localhost:3000/health</a> - API健康检查
+            </p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>🔧 故障排除</h2>
+        <p>如果无法访问，请尝试：</p>
+        <ol>
+            <li>确认你正在访问正确的IP地址</li>
+            <li>检查网络连接是否正常</li>
+            <li>尝试使用上面的"测试连接"按钮</li>
+            <li>如果是远程服务器，确保安全组/防火墙允许端口8080和3000</li>
+            <li>重启服务：<code>cd yixiaoban_app && ./start_dev.sh</code></li>
+        </ol>
+    </div>
+    
+    <script>
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString('zh-CN');
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // 测试服务连接
+        async function testService(service) {
+            let url, resultId, statusId;
+            
+            switch(service) {
+                case 'admin':
+                    url = 'http://10.0.0.12:8080';
+                    resultId = 'admin-result';
+                    statusId = 'admin-status';
+                    break;
+                case 'api':
+                    url = 'http://10.0.0.12:3000/health';
+                    resultId = 'api-result';
+                    statusId = 'api-status';
+                    break;
+                case 'api-docs':
+                    url = 'http://10.0.0.12:3000/api';
+                    resultId = 'api-result';
+                    statusId = 'api-status';
+                    break;
+            }
+            
+            const resultEl = document.getElementById(resultId);
+            const statusEl = document.getElementById(statusId);
+            
+            resultEl.textContent = `正在测试 ${url}...`;
+            statusEl.textContent = '测试中...';
+            statusEl.className = 'status';
+            
+            try {
+                const response = await fetch(url, { mode: 'no-cors' });
+                // 由于no-cors模式，我们只能检查是否成功发起请求
+                statusEl.textContent = '✅ 可访问';
+                statusEl.className = 'status success';
+                resultEl.textContent = `✅ 服务可访问: ${url}\n\n请点击上面的链接在浏览器中打开。`;
+            } catch (error) {
+                // 尝试使用XMLHttpRequest
+                const xhr = new XMLHttpRequest();
+                xhr.timeout = 5000;
+                xhr.open('GET', url, true);
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        statusEl.textContent = '✅ 可访问';
+                        statusEl.className = 'status success';
+                        resultEl.textContent = `✅ 服务可访问 (状态码: ${xhr.status}): ${url}\n\n请点击上面的链接在浏览器中打开。`;
+                    } else {
+                        statusEl.textContent = '❌ 连接失败';
+                        statusEl.className = 'status error';
+                        resultEl.textContent = `❌ 连接失败 (状态码: ${xhr.status}): ${url}\n\n可能的原因：\n1. 服务未运行\n2. 端口被防火墙阻挡\n3. 网络配置问题`;
+                    }
+                };
+                xhr.onerror = function() {
+                    statusEl.textContent = '❌ 无法连接';
+                    statusEl.className = 'status error';
+                    resultEl.textContent = `❌ 无法连接到: ${url}\n\n请检查：\n1. 服务器IP地址是否正确\n2. 端口是否开放\n3. 网络连接是否正常\n\n服务器IP: 10.0.0.12\n端口: ${url.includes(':8080') ? '8080' : '3000'}`;
+                };
+                xhr.ontimeout = function() {
+                    statusEl.textContent = '⏱️ 连接超时';
+                    statusEl.className = 'status error';
+                    resultEl.textContent = `⏱️ 连接超时: ${url}\n\n可能的原因：\n1. 网络延迟过高\n2. 服务响应慢\n3. 防火墙阻挡`;
+                };
+                xhr.send();
+            }
+        }
+        
+        // 页面加载时自动测试
+        window.onload = function() {
+            setTimeout(() => testService('admin'), 1000);
+            setTimeout(() => testService('api'), 2000);
+        };
+    </script>
+</body>
+</html>

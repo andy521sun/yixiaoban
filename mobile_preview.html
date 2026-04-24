@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>医小伴APP移动端预览</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            font-size: 60px;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .apps-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .app-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .app-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+        }
+        
+        .app-header {
+            background: #4CAF50;
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .app-icon {
+            font-size: 50px;
+            margin-bottom: 15px;
+        }
+        
+        .app-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .app-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .app-content {
+            padding: 30px;
+        }
+        
+        .app-features {
+            list-style: none;
+            margin-bottom: 25px;
+        }
+        
+        .app-features li {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .app-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-icon {
+            color: #4CAF50;
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        .app-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #4CAF50;
+            border: 2px solid #4CAF50;
+        }
+        
+        .btn-outline:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .preview-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .preview-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .preview-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .phone-frame {
+            width: 300px;
+            background: #222;
+            border-radius: 40px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .phone-screen {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            height: 600px;
+            position: relative;
+        }
+        
+        .screen-content {
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .app-name {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .api-status {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-online {
+            background: #28a745;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .apps-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .phone-frame {
+                width: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏥</div>
+            <h1>医小伴陪诊APP移动端</h1>
+            <div class="subtitle">患者端与陪诊师端应用预览</div>
+        </div>
+        
+        <div class="apps-container">
+            <!-- 患者端卡片 -->
+            <div class="app-card">
+                <div class="app-header">
+                    <div class="app-icon">👤</div>
+                    <div class="app-title">患者端（客户端）</div>
+                    <div class="app-subtitle">为患者提供便捷的陪诊服务</div>
+                </div>
+                <div class="app-content">
+                    <ul class="app-features">
+                        <li><span class="feature-icon">✅</span> 医院查询与预约</li>
+                        <li><span class="feature-icon">✅</span> 陪诊师选择与匹配</li>
+                        <li><span class="feature-icon">✅</span> AI智能问诊</li>
+                        <li><span class="feature-icon">✅</span> 在线支付与评价</li>
+                        <li><span class="feature-icon">✅</span> 实时聊天沟通</li>
+                        <li><span class="feature-icon">✅</span> 就医记录管理</li>
+                    </ul>
+                    <div class="app-actions">
+                        <button class="btn btn-primary" onclick="showPatientPreview()">预览界面</button>
+                        <button class="btn btn-secondary" onclick="downloadPatientAPK()">下载APK</button>
+                        <button class="btn btn-outline" onclick="viewPatientCode()">查看代码</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 陪诊师端卡片 -->
+            <div class="app-card">
+                <div class="app-header">
+                    <div class="app-icon">👨‍⚕️</div>
+                    <div class="app-title">陪诊师端（医生端）</div>
+                    <div class="app-subtitle">为陪诊师提供专业的工作平台</div>
+                </div>
+                <div class="app-content">
+                    <ul class="app-features">
+                        <li><span class="feature-icon">✅</span> 订单接收与管理</li>
+                        <li><span class="feature-icon">✅</span> 患者信息查看</li>
+                        <li><span class="feature-icon">✅</span> 路线规划与导航</li>
+                        <li><span class="feature-icon">✅</span> 服务记录与报告</li>
+                        <li><span class="feature-icon">✅</span> 收入统计与管理</li>
+                        <li><span class="feature-icon">✅</span> 日程安排与提醒</li>
+                    </ul>
+                    <div class="app-actions">
+                        <button class="btn btn-primary" onclick="showCompanionPreview()">预览界面</button>
+                        <button class="btn btn-secondary" onclick="downloadCompanionAPK()">下载APK</button>
+                        <button class="btn btn-outline" onclick="viewCompanionCode()">查看代码</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 预览区域 -->
+        <div class="preview-section" id="previewSection" style="display: none;">
+            <div class="preview-title" id="previewTitle">应用界面预览</div>
+            <div class="preview-container">
+                <div class="phone-frame">
+                    <div class="app-name" id="appName">医小伴患者端</div>
+                    <div class="phone-screen">
+                        <div class="screen-content" id="screenContent">
+                            <!-- 动态内容 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- API状态 -->
+        <div class="api-status">
+            <h3>📡 后端服务状态</h3>
+            <p><span class="status-indicator status-online"></span> API服务: <span id="apiStatus">检测中...</span></p>
+            <p>服务器: 122.51.179.136:3000</p>
+            <button class="btn btn-outline" onclick="testAPI()" style="margin-top: 15px;">测试API连接</button>
+            <div id="apiResult" style="margin-top: 15px; display: none;"></div>
+        </div>
+        
+        <div class="footer">
+            <p>医小伴陪诊APP - 温暖就医，专业陪伴 🏥❤️</p>
+            <p>开发环境 | 最后更新: <span id="updateTime"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('updateTime').textContent = 
+                now.toLocaleString('zh-CN', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+        }
+        
+        // 患者端预览
+        function showPatientPreview() {
+            document.getElementById('previewSection').style.display = 'block';
+            document.getElementById('previewTitle').textContent = '患者端界面预览';
+            document.getElementById('appName').textContent = '医小伴患者端';
+            
+            const content = `
+                <div style="background: #4CAF50; padding: 20px; color: white; text-align: center;">
+                    <h2 style="margin: 0;">医小伴</h2>
+                    <p style="margin: 5px 0 0; opacity: 0.9;">温暖就医，专业陪伴</p>
+                </div>
+                
+                <div style="padding: 20px;">
+                    <div style="background: #E8F5E9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px;">👋 您好，欢迎回来！</h3>
+                        <p style="margin: 0; color: #666;">今天需要什么帮助？</p>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4>🏥 推荐医院</h4>
+                        <div style="display: flex; overflow-x: auto; gap: 15px; padding: 10px 0;">
+                            <div style="min-width: 200px; background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                                <strong>上海市第一人民医院</strong>
+                                <p style="margin: 5px 0; font-size: 12px; color: #4CAF50;">三甲医院</p>
+                                <p style="margin: 0; font-size: 12px; color: #666;">2.5km</p>
+                            </div>
+                            <div style="min-width: 200px; background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                                <strong>华山医院</strong>
+                                <p style="margin: 5px 0; font-size: 12px; color: #4CAF50;">三甲医院</p>
+                                <p style="margin: 0; font-size: 12px; color: #666;">3.2km</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4>👨‍⚕️ 推荐陪诊师</h4>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                            <strong>张美丽 · 资深陪诊师</strong>
+                            <p style="margin: 5px 0; font-size: 12px; color: #666;">5年经验 · ¥200/小时</p>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #4CAF50;">⭐ 4.8</span>
+                                <span style="background: #4CAF50; color: white; padding: 3px 10px; border-radius: 15px; font-size: 12px;">在线</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px;">
+                        <div style="text-align: center;">
+                            <div style="background: #E3F2FD; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #2196F3;">🏥</div>
+                            <div style="font-size: 12px;">找医院</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #F3E5F5; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #9C27B0;">🤖</div>
+                            <div style="font-size: 12px;">AI问诊</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #FFF3E0; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #FF9800;">📅</div>
+                            <div style="font-size: 12px;">我的预约</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #E8F5E9; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #4CAF50;">💬</div>
+                            <div style="font-size: 12px;">在线咨询</div>
+                        </div>
+                    </div>
+                </div>`;
+            
+            document.getElementById('screenContent').innerHTML = content;
+        }
+        
+        // 陪诊师端预览
+        function showCompanionPreview() {
+            document.getElementById('previewSection').style.display = 'block';
+            document.getElementById('previewTitle').textContent = '陪诊师端界面预览';
+            document.getElementById('appName').textContent = '医小伴陪诊师端';
+            
+            const content = `
+                <div style="background: #2196F3; padding: 20px; color: white; text-align: center;">
+                    <h2 style="margin: 0;">医小伴陪诊师</h2>
+                    <p style="margin: 5px 0 0; opacity: 0.9;">专业服务，温暖陪伴</p>
+                </div>
+                
+                <div style="padding: 20px;">
+                    <div style="background: #E3F2FD; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="width: 50px; height: 50px; background: #2196F3; border-radius: 25px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">👨‍⚕️</div>
+                            <div>
+                                <h3 style="margin: 0 0 5px;">李医生，您好！</h3>
+                                <p style="margin: 0; color: #666;">今日收入: ¥1,250 | 待接订单: 3</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4>📋 今日订单</h4>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>王先生 · 内科陪诊</strong>
+                                    <p style="margin: 5px 0; font-size: 12px; color: #666;">上海市第一人民医院 | 09:30</p>
+                                </div>
+                                <span style="background: #4CAF50; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px;">待出发</span>
+                            </div>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>李女士 · 老年陪护</strong>
+                                    <p style="margin: 5px 0; font-size: 12px; color: #666;">华山医院 | 14:00</p>
+                                </div>
+                                <span style="background: #FF9800; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px;">进行中</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4>📊 本周统计</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <div style="background: #E8F5E9; padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #4CAF50;">12</div>
+                                <div style="font-size: 12px; color: #666;">完成订单</div>
+                            </div>
+                            <div style="background: #FFF3E0; padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #FF9800;">¥3,450</div>
+                                <div style="font-size: 12px; color: #666;">本周收入</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px;">
+                        <div style="text-align: center;">
+                            <div style="background: #E3F2FD; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #2196F3;">📋</div>
+                            <div style="font-size: 12px;">订单管理</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #F3E5F5; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #9C27B0;">🗺️</div>
+                            <div style="font-size: 12px;">路线导航</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #FFF3E0; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #FF9800;">💰</div>
+                            <div style="font-size: 12px;">收入统计</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #E8F5E9; width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center; color: #4CAF50;">📅</div>
+                            <div style="font-size: 12px;">日程安排</div>
+                        </div>
+                    </div>
+                </div>`;
+            
+            document.getElementById('screenContent').innerHTML = content;
+        }
+        
+        // 下载APK（模拟）
+        function downloadPatientAPK() {
+            alert('患者端APK构建功能需要Flutter开发环境。\n\n请运行: cd mobile/patient_app && flutter build apk');
+        }
+        
+        function downloadCompanionAPK() {
+            alert('陪诊师端APK构建功能需要Flutter开发环境。\n\n请运行: cd mobile/companion_app && flutter build apk');
+        }
+        
+        // 查看代码
+        function viewPatientCode() {
+            alert('患者端代码位于: /root/.openclaw/workspace/yixiaoban_app/mobile/patient_app');
+        }
+        
+        function viewCompanionCode() {
+            alert('陪诊师端代码位于: /root/.openclaw/workspace/yixiaoban_app/mobile/companion_app');
+        }
+        
+        // 测试API连接
+        async function testAPI() {
+            const apiStatus = document.getElementById('apiStatus');
+            const apiResult = document.getElementById('apiResult');
+            
+            apiStatus.innerHTML = '检测中...';
+            apiResult.style.display = 'none';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch('http://122.51.179.136:3000/health');
+                const endTime = Date.now();
+                const latency = endTime - startTime;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    apiStatus.innerHTML = `<span style="color: #28a745">在线 (${latency}ms)</span>`;
+                    apiResult.innerHTML = `
+                        <div style="background: #d4edda; padding: 15px; border-radius: 10px; color: #155724;">
+                            <strong>✅ API连接正常</strong><br>
+                            服务: ${data.service}<br>
+                            版本: ${data.version}<br>
+                            数据库: ${data.database}<br>
+                            响应时间: ${latency}ms
+                        </div>
+                    `;
+                    apiResult.style.display = 'block';
+                } else {
+                    throw new Error('HTTP ' + response.status);
+                }
+            } catch (error) {
+                apiStatus.innerHTML = '<span style="color: #dc3545">离线</span>';
+                apiResult.innerHTML = `
+                    <div style="background: #f8d7da; padding: 15px; border-radius: 10px; color: #721c24;">
+                        <strong>❌ API连接失败</strong><br>
+                        错误: ${error.message}<br>
+                        请检查服务器状态和网络连接
+                    </div>
+                `;
+                apiResult.style.display = 'block';
+            }
+        }
+        
+        // 初始化
+        updateTime();
+        setInterval(updateTime, 60000);
+        
+        // 自动测试API
+        setTimeout(testAPI, 1000);
+    </script>
+</body>
+</html>
