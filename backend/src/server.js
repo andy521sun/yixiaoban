@@ -3,6 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const http = require('http');
+const path = require('path');
+const fs = require('fs');
 const { testConnection, configQueries } = require('./db');
 const auth = require('./auth');
 require('dotenv').config();
@@ -18,21 +20,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined'));
 
-// 静态文件（管理首页）
-// 静态文件，设置不缓存方便调试
-app.use(express.static('public', {
+// 静态文件服务
+const staticOptions = {
   maxAge: 0,
   etag: false,
   setHeaders: (res, path) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    // 允许内联脚本和样式
     if (path.endsWith('.html')) {
-      res.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
+      res.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: https: http:;");
     }
   }
-}));
+};
+
+app.use(express.static('public', staticOptions));
+app.use('/admin', express.static('public/dist/admin', staticOptions));
+app.use('/patient', express.static('public/dist/patient', staticOptions));
+app.use('/companion', express.static('public/dist/companion', staticOptions));
 
 // 请求日志中间件
 app.use((req, res, next) => {
@@ -705,6 +710,23 @@ app.get('/api/admin/dashboard', auth.authenticateToken, auth.authorizeRole(['adm
       error: error.message
     });
   }
+});
+
+// ==================== SPA 路由回退 ====================
+// Flutter Web 使用 History API 路由，需要把前端路径回退到 index.html
+const spaPaths = {
+  '/patient': '/patient/index.html',
+  '/companion': '/companion/index.html',
+  '/admin': '/admin/index.html',
+};
+
+app.get(/^\/(patient|companion|admin)(\/.*)?$/, (req, res, next) => {
+  const prefix = req.params[0];
+  const distPath = path.join(__dirname, '..', 'public', 'dist', prefix, 'index.html');
+  if (fs.existsSync(distPath)) {
+    return res.sendFile(distPath);
+  }
+  next();
 });
 
 // 404处理

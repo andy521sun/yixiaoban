@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/companion_state.dart';
 import '../../../core/config/app_config.dart';
-import '../home/available_orders_page_v2.dart';
-import '../tasks/my_tasks_page_v2.dart';
+import '../home/available_orders_page.dart';
+import '../tasks/my_tasks_page.dart';
 import '../chat/chat_list_page.dart';
 import '../profile/profile_page.dart';
 
