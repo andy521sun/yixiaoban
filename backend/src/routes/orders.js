@@ -1,399 +1,225 @@
+/**
+ * 患者端订单管理 API
+ * 依赖数据库 orders / users / hospitals / companions 表
+ *
+ * 订单状态: pending → paid → confirmed → in_progress → completed → cancelled
+ *
+ * 患者端流程：
+ * 创建订单（pending） → 支付（paid） → 等待陪诊师接单
+ *   → 陪诊师接单（confirmed） → 服务中（in_progress） → 完成（completed）
+ */
 const express = require('express');
 const router = express.Router();
+const auth = require('../auth');
+const { query: dbQuery } = require('../db');
+const notify = require('../services/notification');
 
-// 模拟数据库
-const orders = [
-  {
-    id: 'order_001',
-    user_id: 'user_001',
-    hospital_id: 'hospital_001',
-    companion_id: 'companion_001',
-    service_type: '普通陪诊',
-    appointment_time: '2026-04-08T09:00:00Z',
-    duration_minutes: 120,
-    price: 229.0,
-    status: 'pending',
-    payment_method: null,
-    payment_status: 'unpaid',
-    created_at: '2026-04-07T08:00:00Z',
-    updated_at: '2026-04-07T08:00:00Z',
-  },
-  {
-    id: 'order_002',
-    user_id: 'user_001',
-    hospital_id: 'hospital_002',
-    companion_id: 'companion_002',
-    service_type: '专业陪诊',
-    appointment_time: '2026-04-09T14:00:00Z',
-    duration_minutes: 180,
-    price: 320.0,
-    status: 'confirmed',
-    payment_method: 'wechat',
-    payment_status: 'paid',
-    created_at: '2026-04-06T10:00:00Z',
-    updated_at: '2026-04-06T10:05:00Z',
-  },
-];
+// 所有订单接口需要认证
+router.use(auth.authenticateToken);
 
-// 模拟数据
-const users = [{ id: 'user_001', name: '张三' }];
-const hospitals = [
-  { id: 'hospital_001', name: '北京协和医院' },
-  { id: 'hospital_002', name: '上海华山医院' },
-];
-const companions = [
-  { id: 'companion_001', name: '张医生' },
-  { id: 'companion_002', name: '李护士' },
-];
-
-// 完全跳过认证
-router.use((req, res, next) => {
-  // 添加支付相关功能
-  req.paymentMethods = {
-    wechat: '微信支付',
-    alipay: '支付宝',
-    balance: '余额支付',
-    bank_card: '银行卡'
-  };
-  
-  req.paymentStatuses = {
-    pending: '待支付',
-    processing: '支付中',
-    success: '支付成功',
-    failed: '支付失败',
-    refunded: '已退款'
-  };
-  
-  next();
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
-});
-
-// 获取订单列表
-router.get('/', (req, res) => {
+/**
+ * 创建订单
+ * POST /api/orders
+ */
+router.post('/', async (req, res) => {
   try {
-    const { user_id } = req.query;
-    
-    let filteredOrders = [...orders];
-    if (user_id) {
-      filteredOrders = filteredOrders.filter(o => o.user_id === user_id);
-    }
-    
-    const enrichedOrders = filteredOrders.map(order => ({
-      ...order,
-      user_name: users.find(u => u.id === order.user_id)?.name || '未知用户',
-      hospital_name: hospitals.find(h => h.id === order.hospital_id)?.name || '未知医院',
-      companion_name: companions.find(c => c.id === order.companion_id)?.name || '未知陪诊师',
-    }));
-    
-    res.json({
-      success: true,
-      data: enrichedOrders,
-      message: '获取订单列表成功',
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '获取订单列表失败',
-      error: error.message,
-    });
-  }
-});
+    const userId = req.user.id;
+    const {
+      hospital_id,
+      department_id = null,
+      appointment_date,
+      appointment_time,
+      service_type = 'accompany',
+      service_hours = 2,
+      symptoms_description = '',
+      special_requirements = '',
+      total_amount,
+    } = req.body;
 
-// 获取订单详情
-router.get('/:id', (req, res) => {
-  try {
-    const order = orders.find(o => o.id === req.params.id);
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: '订单不存在',
+    // 必填校验
+    if (!hospital_id || !appointment_date || !appointment_time) {
+      return res.status(400).json({
+        success: false, message: '缺少必填参数: hospital_id, appointment_date, appointment_time'
       });
     }
-    
-    const enrichedOrder = {
-      ...order,
-      user_name: users.find(u => u.id === order.user_id)?.name || '未知用户',
-      hospital_name: hospitals.find(h => h.id === order.hospital_id)?.name || '未知医院',
-      companion_name: companions.find(c => c.id === order.companion_id)?.name || '未知陪诊师',
-    };
-    
-    res.json({
-      success: true,
-      data: enrichedOrder,
-      message: '获取订单详情成功',
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '获取订单详情失败',
-      error: error.message,
-    });
-  }
-});
 
-// 订单统计
-router.get('/stats', (req, res) => {
-  try {
-    const { user_id } = req.query;
-    
-    let filteredOrders = [...orders];
-    if (user_id) {
-      filteredOrders = filteredOrders.filter(o => o.user_id === user_id);
+    // 生成订单号
+    const orderNumber = 'YB' + new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14) +
+      String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+    // 计算价格
+    const hours = parseFloat(service_hours) || 2;
+    let rate = 150;
+    if (service_type === '专业陪诊') rate = 200;
+    else if (service_type === '急诊陪诊') rate = 250;
+    else if (service_type === '长期陪护') rate = 180;
+
+    const amount = parseFloat(total_amount) || (rate * hours);
+
+    // 映射 service_type 到数据库枚举
+    const typeMap = {
+      '普通陪诊': 'accompany',
+      '专业陪诊': 'consult',
+      '急诊陪诊': 'other',
+      '长期陪护': 'other',
+    };
+    const dbServiceType = typeMap[service_type] || 'accompany';
+
+    // 创建订单
+    const uuid = require('uuid');
+    const id = uuid.v4();
+    const sql = `
+      INSERT INTO orders
+      (id, order_number, patient_id, hospital_id, department_id,
+       appointment_date, appointment_time, service_type, service_hours,
+       symptoms_description, special_requirements, total_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    await dbQuery(sql, [
+      id, orderNumber, userId, hospital_id, department_id,
+      appointment_date, appointment_time, dbServiceType, hours,
+      symptoms_description, special_requirements, amount,
+    ]);
+
+    // 获取创建的订单
+    const order = await dbQuery('SELECT * FROM orders WHERE id = ?', [id]);
+
+    if (!order[0]) {
+      return res.status(500).json({ success: false, message: '创建订单失败' });
     }
-    
-    const stats = {
-      total_orders: filteredOrders.length,
-      total_amount: filteredOrders.reduce((sum, o) => sum + o.price, 0),
-      status_counts: {
-        pending: filteredOrders.filter(o => o.status === 'pending').length,
-        confirmed: filteredOrders.filter(o => o.status === 'confirmed').length,
-        completed: filteredOrders.filter(o => o.status === 'completed').length,
-        cancelled: filteredOrders.filter(o => o.status === 'cancelled').length,
-      }
-    };
-    
-    res.json({
-      success: true,
-      data: stats,
-      message: '获取订单统计成功',
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '获取订单统计失败',
-      error: error.message,
-    });
-  }
-});
 
-// 创建订单
-router.post('/', (req, res) => {
-  try {
-    const newOrder = {
-      id: `order_${Date.now()}`,
-      ...req.body,
-      status: 'pending',
-      payment_status: 'unpaid',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    orders.push(newOrder);
-    
-    res.json({
-      success: true,
-      data: newOrder,
-      message: '创建订单成功',
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '创建订单失败',
-      error: error.message,
-    });
-  }
-});
-
-// ==================== 支付功能 ====================
-
-// 创建支付订单
-router.post('/:order_id/payment/create', (req, res) => {
-  try {
-    const { order_id } = req.params;
-    const { payment_method, amount } = req.body;
-    
-    // 查找订单
-    const order = orders.find(o => o.id === order_id);
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: '订单不存在'
-      });
+    // 通知在线陪诊师有新订单
+    try {
+      await notify.newOrderAvailable(id, order[0].hospital_name || order[0].hospital_id, dbServiceType);
+    } catch (e) {
+      console.log('[通知] 陪诊师通知推送: 跳过（非关键错误）');
     }
-    
-    // 验证支付方式
-    if (!req.paymentMethods[payment_method]) {
+
+    res.status(201).json({
+      success: true,
+      message: '订单创建成功，请及时支付',
+      data: order[0]
+    });
+  } catch (error) {
+    console.error('[orders] 创建订单失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '创建订单失败: ' + error.message
+    });
+  }
+});
+
+/**
+ * 获取我的订单列表
+ * GET /api/orders?status=pending&page=1&limit=20
+ */
+router.get('/', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { status, limit = 20 } = req.query;
+
+    let sql = `
+      SELECT o.*, h.name as hospital_name, h.address as hospital_address,
+             c.real_name as companion_name
+      FROM orders o
+      LEFT JOIN hospitals h ON o.hospital_id = h.id
+      LEFT JOIN companions c ON o.companion_id = c.id
+      WHERE o.patient_id = ?
+    `;
+    const params = [userId];
+
+    if (status) {
+      sql += ' AND o.status = ?';
+      params.push(status);
+    }
+
+    sql += ' ORDER BY o.created_at DESC LIMIT ?';
+    params.push(parseInt(limit));
+
+    const orders = await dbQuery(sql, params);
+
+    res.json({
+      success: true,
+      data: orders,
+      total: orders.length
+    });
+  } catch (error) {
+    console.error('[orders] 获取列表失败:', error);
+    res.status(500).json({ success: false, message: '获取订单列表失败' });
+  }
+});
+
+/**
+ * 获取订单详情
+ * GET /api/orders/:id
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const orderId = req.params.id;
+
+    const orders = await dbQuery(`
+      SELECT o.*, h.name as hospital_name, h.address as hospital_address,
+             c.real_name as companion_name,
+             u.phone as companion_phone,
+             c.average_rating as companion_rating, c.hourly_rate,
+             d.name as department_name
+      FROM orders o
+      LEFT JOIN hospitals h ON o.hospital_id = h.id
+      LEFT JOIN companions c ON o.companion_id = c.id
+      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN departments d ON o.department_id = d.id
+      WHERE o.id = ? AND o.patient_id = ?
+    `, [orderId, userId]);
+
+    if (!orders[0]) {
+      return res.status(404).json({ success: false, message: '订单不存在' });
+    }
+
+    res.json({ success: true, data: orders[0] });
+  } catch (error) {
+    console.error('[orders] 获取详情失败:', error);
+    res.status(500).json({ success: false, message: '获取订单详情失败' });
+  }
+});
+
+/**
+ * 取消订单
+ * POST /api/orders/:id/cancel
+ * 仅允许 pending 或 paid 状态的订单取消
+ */
+router.post('/:id/cancel', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const orderId = req.params.id;
+    const { reason = '' } = req.body;
+
+    const orders = await dbQuery(
+      'SELECT id, status FROM orders WHERE id = ? AND patient_id = ?',
+      [orderId, userId]
+    );
+
+    if (!orders[0]) {
+      return res.status(404).json({ success: false, message: '订单不存在' });
+    }
+
+    const order = orders[0];
+    if (!['pending', 'paid', 'confirmed'].includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: `无效的支付方式，支持：${Object.keys(req.paymentMethods).join(', ')}`
+        message: `当前状态(${order.status})无法取消`
       });
     }
-    
-    // 验证金额
-    if (amount !== order.price) {
-      return res.status(400).json({
-        success: false,
-        message: `支付金额不匹配，订单金额：${order.price}`
-      });
-    }
-    
-    // 生成支付ID
-    const payment_id = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // 创建支付记录
-    const payment = {
-      payment_id,
-      order_id,
-      payment_method,
-      amount,
-      status: 'pending',
-      payment_url: `/api/orders/${order_id}/payment/simulate/${payment_id}`,
-      created_at: new Date().toISOString()
-    };
-    
-    // 更新订单支付状态
-    order.payment_method = payment_method;
-    order.payment_status = 'processing';
-    order.updated_at = new Date().toISOString();
-    
-    res.json({
-      success: true,
-      data: payment,
-      message: '创建支付订单成功'
-    });
-    
-  } catch (error) {
-    console.error('创建支付订单失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '创建支付订单失败',
-      error: error.message
-    });
-  }
-});
 
-// 模拟支付
-router.post('/:order_id/payment/simulate/:payment_id', (req, res) => {
-  try {
-    const { order_id, payment_id } = req.params;
-    const { result = 'success' } = req.body;
-    
-    // 查找订单
-    const order = orders.find(o => o.id === order_id);
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: '订单不存在'
-      });
-    }
-    
-    // 更新支付状态
-    const newStatus = result === 'success' ? 'success' : 'failed';
-    const transaction_id = `trans_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    
-    // 更新订单状态
-    if (result === 'success') {
-      order.payment_status = 'paid';
-      order.status = 'confirmed';
-      order.updated_at = new Date().toISOString();
-    } else {
-      order.payment_status = 'unpaid';
-      order.updated_at = new Date().toISOString();
-    }
-    
-    res.json({
-      success: true,
-      message: `模拟支付${result === 'success' ? '成功' : '失败'}`,
-      data: {
-        payment_id,
-        order_id,
-        status: newStatus,
-        transaction_id,
-        paid_at: new Date().toISOString()
-      }
-    });
-    
-  } catch (error) {
-    console.error('模拟支付失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '模拟支付失败',
-      error: error.message
-    });
-  }
-});
+    await dbQuery(
+      "UPDATE orders SET status = 'cancelled', cancel_reason = ?, updated_at = NOW() WHERE id = ?",
+      [reason, orderId]
+    );
 
-// 获取支付状态
-router.get('/:order_id/payment/status', (req, res) => {
-  try {
-    const { order_id } = req.params;
-    
-    const order = orders.find(o => o.id === order_id);
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: '订单不存在'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: {
-        order_id,
-        payment_status: order.payment_status,
-        payment_method: order.payment_method,
-        amount: order.price,
-        status_text: req.paymentStatuses[order.payment_status] || '未知状态',
-        method_text: req.paymentMethods[order.payment_method] || '未知方式'
-      }
-    });
-    
+    res.json({ success: true, message: '订单已取消' });
   } catch (error) {
-    console.error('获取支付状态失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取支付状态失败',
-      error: error.message
-    });
-  }
-});
-
-// 支付统计
-router.get('/payment/statistics', (req, res) => {
-  try {
-    const stats = {
-      total_orders: orders.length,
-      total_amount: orders.reduce((sum, o) => sum + o.price, 0),
-      paid_orders: orders.filter(o => o.payment_status === 'paid').length,
-      paid_amount: orders.filter(o => o.payment_status === 'paid').reduce((sum, o) => sum + o.price, 0),
-      unpaid_orders: orders.filter(o => o.payment_status === 'unpaid').length,
-      unpaid_amount: orders.filter(o => o.payment_status === 'unpaid').reduce((sum, o) => sum + o.price, 0),
-      payment_methods: {}
-    };
-    
-    // 统计支付方式
-    orders.forEach(order => {
-      if (order.payment_method) {
-        const method = order.payment_method;
-        stats.payment_methods[method] = stats.payment_methods[method] || {
-          count: 0,
-          amount: 0
-        };
-        stats.payment_methods[method].count++;
-        stats.payment_methods[method].amount += order.price;
-      }
-    });
-    
-    // 计算成功率
-    stats.success_rate = stats.total_orders > 0 
-      ? ((stats.paid_orders / stats.total_orders) * 100).toFixed(2)
-      : '0.00';
-    
-    res.json({
-      success: true,
-      data: stats
-    });
-    
-  } catch (error) {
-    console.error('获取支付统计失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取支付统计失败',
-      error: error.message
-    });
+    console.error('[orders] 取消订单失败:', error);
+    res.status(500).json({ success: false, message: '取消订单失败' });
   }
 });
 

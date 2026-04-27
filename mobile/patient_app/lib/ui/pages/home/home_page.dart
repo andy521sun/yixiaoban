@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../main.dart';
 import '../../../core/services/api_service.dart';
-import '../auth/login_page.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -51,6 +51,12 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('医小伴', style: TextStyle(fontWeight: FontWeight.w600)),
         actions: [
+          // AI问诊入口
+          IconButton(
+            icon: const Icon(Icons.auto_awesome, color: Color(0xFF34A853)),
+            tooltip: 'AI智能问诊',
+            onPressed: () => Navigator.pushNamed(context, '/ai/consult'),
+          ),
           if (!appState.loggedIn)
             TextButton(
               onPressed: () => Navigator.pushNamed(context, '/login'),
@@ -142,7 +148,7 @@ class _HomePageState extends State<HomePage> {
           Positioned(
             right: -20,
             bottom: -20,
-            child: Icon(Icons.medical_services, size: 120, color: Colors.white.withOpacity(0.15)),
+            child: Icon(Icons.medical_services, size: 120, color: Colors.white.withValues(alpha: 0.15)),
           ),
           Padding(
             padding: const EdgeInsets.all(24),
@@ -151,12 +157,12 @@ class _HomePageState extends State<HomePage> {
               children: [
                 const Text('专业陪诊服务', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text('上海三甲医院 · 资深陪诊师', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                Text('上海三甲医院 · 资深陪诊师', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text('立即预约', style: TextStyle(color: Colors.white, fontSize: 14)),
@@ -205,7 +211,7 @@ class _HomePageState extends State<HomePage> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A73E8).withOpacity(0.1),
+                  color: const Color(0xFF1A73E8).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(s['icon'] as IconData, color: const Color(0xFF1A73E8), size: 26),
@@ -227,7 +233,7 @@ class _HomePageState extends State<HomePage> {
         leading: Container(
           width: 50, height: 50,
           decoration: BoxDecoration(
-            color: const Color(0xFF1A73E8).withOpacity(0.1),
+            color: const Color(0xFF1A73E8).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: const Icon(Icons.local_hospital, color: Color(0xFF1A73E8)),
@@ -254,7 +260,7 @@ class _HomePageState extends State<HomePage> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           radius: 25,
-          backgroundColor: const Color(0xFF34A853).withOpacity(0.15),
+          backgroundColor: const Color(0xFF34A853).withValues(alpha: 0.15),
           child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(color: Color(0xFF34A853), fontWeight: FontWeight.bold)),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),

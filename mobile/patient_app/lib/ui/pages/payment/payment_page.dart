@@ -75,11 +75,19 @@ class _PaymentPageState extends State<PaymentPage> {
       // 模拟支付过程
       await Future.delayed(const Duration(seconds: 2));
       
-      // 调用支付API
-      final paymentResponse = await ApiService().payOrder(response['order_id'], {
-        'payment_method': _selectedPaymentMethod,
-        'payment_amount': _totalAmount,
-      });
+      // 支付流程
+      final amount = response['amount'] ?? response['total_amount'] ?? _totalAmount;
+      final paymentResponse = await ApiService().createPayment(
+        response['order_id'] ?? response['data']?['order_no'] ?? '',
+        'wechat',
+        (amount is int) ? amount.toDouble() : (amount as double),
+      );
+      if (paymentResponse['success'] == true) {
+        // 模拟支付确认
+        await ApiService().simulatePayment(
+          paymentResponse['data']?['payment_id'] ?? '',
+        );
+      }
       
       setState(() {
         _isPaying = false;
@@ -173,7 +181,7 @@ class _PaymentPageState extends State<PaymentPage> {
                 children: [
                   Text(
                     '支付金额',
-                    style: Theme.of(context).textTheme.bodyText2?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.grey[600],
                     ),
                   ),
@@ -189,7 +197,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   const SizedBox(height: 12),
                   Text(
                     '医小伴陪诊服务',
-                    style: Theme.of(context).textTheme.bodyText1,
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ],
               ),
@@ -201,7 +209,7 @@ class _PaymentPageState extends State<PaymentPage> {
           // 支付方式标题
           Text(
             '选择支付方式',
-            style: Theme.of(context).textTheme.headline6?.copyWith(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -228,7 +236,7 @@ class _PaymentPageState extends State<PaymentPage> {
               Expanded(
                 child: RichText(
                   text: TextSpan(
-                    style: Theme.of(context).textTheme.bodyText2,
+                    style: Theme.of(context).textTheme.bodySmall,
                     children: [
                       const TextSpan(text: '我已阅读并同意'),
                       TextSpan(
@@ -268,7 +276,7 @@ class _PaymentPageState extends State<PaymentPage> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: method['color'].withOpacity(0.1),
+            color: method['color'].withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -348,7 +356,7 @@ class _PaymentPageState extends State<PaymentPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),

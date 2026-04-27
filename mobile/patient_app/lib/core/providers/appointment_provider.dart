@@ -1,6 +1,57 @@
 import 'package:flutter/material.dart';
 import '../models/hospital.dart';
-import '../models/companion.dart';
+
+class Companion {
+  final String id;
+  final String name;
+  final String specialty;
+  final String avatar;
+  final double rating;
+  final int completedOrders;
+  final int experienceYears;
+  final double pricePerHour;
+  final bool available;
+  final String phone;
+  final String hospital;
+  final String department;
+  final String level;
+  final String tags;
+
+  Companion({
+    required this.id,
+    required this.name,
+    this.specialty = '',
+    this.avatar = '',
+    this.rating = 5.0,
+    this.completedOrders = 0,
+    this.experienceYears = 0,
+    this.pricePerHour = 0,
+    this.available = true,
+    this.phone = '',
+    this.hospital = '',
+    this.department = '',
+    this.level = '',
+    this.tags = '',
+  });
+
+  factory Companion.fromJson(Map<String, dynamic> json) {
+    return Companion(
+      id: json['user_id'] ?? json['id'] ?? '',
+      name: json['real_name'] ?? json['name'] ?? '',
+      specialty: json['specialty']?.toString() ?? '',
+      avatar: json['avatar_url'] ?? '',
+      rating: double.tryParse('${json['average_rating'] ?? 5}') ?? 5.0,
+      completedOrders: int.tryParse('${json['service_count'] ?? 0}') ?? 0,
+      experienceYears: int.tryParse('${json['experience_years'] ?? 0}') ?? 0,
+      pricePerHour: double.tryParse('${json['hourly_rate'] ?? 0}') ?? 0,
+      available: json['is_available'] != false,
+      phone: json['phone'] ?? '',
+      hospital: json['hospital_name'] ?? '',
+      department: json['department'] ?? '',
+      tags: '',
+    );
+  }
+}
 
 class AppointmentProvider extends ChangeNotifier {
   Hospital? _hospital;

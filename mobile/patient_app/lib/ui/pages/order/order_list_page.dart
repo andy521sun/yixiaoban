@@ -24,7 +24,8 @@ class _OrderListPageState extends State<OrderListPage> {
   Future<void> _loadOrders() async {
     setState(() => _loading = true);
     final appState = context.read<AppState>();
-    final orders = await _api.getOrders(appState.token);
+    _api.setToken(appState.token);
+    final orders = await _api.getOrders();
     if (!mounted) return;
     setState(() { _orders = orders; _loading = false; });
   }
@@ -127,7 +128,7 @@ class _OrderListPageState extends State<OrderListPage> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: _statusColor(status).withOpacity(0.1),
+                                        color: _statusColor(status).withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(

@@ -135,9 +135,6 @@ app.use('/api/realtime', realtimeRouter);
 const adminRouter = require('./routes/admin');
 app.use('/api/admin', adminRouter);
 
-// 测试订单API路由（不需要认证）
-const ordersTestRouter = require('./routes/orders_test');
-app.use('/api/test/orders', ordersTestRouter);
 
 // 订单管理API路由
 const ordersRouter = require('./routes/orders');
@@ -163,8 +160,8 @@ app.use('/test', testPageRouter);
 const smsRouter = require('./routes/sms');
 app.use('/api/sms', smsRouter);
 
-// 陪诊师端订单管理路由
-const companionOrdersRouter = require('./routes/companion_orders');
+// 陪诊师端订单管理路由（v2 增强版）
+const companionOrdersRouter = require('./routes/companion_orders_v2');
 app.use('/api/companion', companionOrdersRouter);
 
 // 用户认证路由

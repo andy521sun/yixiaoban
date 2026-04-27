@@ -6,6 +6,10 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const auth = require('../auth');
+
+// 支付接口需要认证
+router.use(auth.authenticateToken);
 
 // 创建支付订单
 router.post('/create', async (req, res) => {
@@ -19,16 +23,38 @@ router.post('/create', async (req, res) => {
       });
     }
     
-    // 生成支付ID
-    const payment_id = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const uuid = require('uuid');
+    const payment_id = uuid.v4();
+    const payment_number = `PAY${Date.now()}`;
+    
+    // 从 JWT 中获取 payer 信息
+    const payerId = req.user.id;
+    const payerName = req.user.name || '患者';
+    const payerPhone = req.user.phone || '';
+    
+    // 从订单获取陪诊师和平台信息
+    const orderRows = await db.query('SELECT companion_id FROM orders WHERE id = ?', [order_id]);
+    let receiverId = 'admin_001';  // 平台账号
+    let receiverName = '医小伴平台';
+    
+    if (orderRows && orderRows.length > 0 && orderRows[0].companion_id) {
+      const compRows = await db.query(`
+        SELECT c.user_id, c.real_name FROM companions c WHERE c.id = ?
+      `, [orderRows[0].companion_id]);
+      if (compRows && compRows.length > 0) {
+        receiverId = compRows[0].user_id;
+        receiverName = compRows[0].real_name;
+      }
+    }
     
     // 创建支付记录
     const query = `
-      INSERT INTO payments (id, order_id, payment_method, amount, status, created_at)
-      VALUES (?, ?, ?, ?, 'pending', NOW())
+      INSERT INTO payments
+        (id, order_id, payment_number, amount, payment_method, payment_status, payer_id, receiver_id, payer_name, receiver_name, payer_account, created_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, NOW())
     `;
     
-    await db.query(query, [payment_id, order_id, payment_method, amount]);
+    await db.query(query, [payment_id, order_id, payment_number, amount, payment_method, payerId, receiverId, payerName, receiverName, payerPhone]);
     
     res.json({
       success: true,
@@ -65,7 +91,7 @@ router.post('/simulate/:payment_id', async (req, res) => {
     
     const updateQuery = `
       UPDATE payments 
-      SET status = ?, 
+      SET payment_status = ?, 
           transaction_id = ?,
           payment_time = NOW(),
           updated_at = NOW()
@@ -75,23 +101,20 @@ router.post('/simulate/:payment_id', async (req, res) => {
     await db.query(updateQuery, [newStatus, transaction_id, payment_id]);
     
     // 获取支付信息
-    const paymentQuery = 'SELECT order_id FROM payments WHERE id = ?';
-    const [rows] = await db.query(paymentQuery, [payment_id]);
+    const rows = await db.query('SELECT order_id FROM payments WHERE id = ?', [payment_id]);
     
-    if (rows.length > 0 && result === 'success') {
+    if (rows && rows.length > 0 && result === 'success') {
       const order_id = rows[0].order_id;
       
       // 更新订单状态
-      const orderQuery = `
+      await db.query(`
         UPDATE orders 
         SET payment_status = 'paid',
-            payment_method = (SELECT payment_method FROM payments WHERE id = ?),
+            payment_method = ?,
             payment_time = NOW(),
             updated_at = NOW()
         WHERE id = ?
-      `;
-      
-      await db.query(orderQuery, [payment_id, order_id]);
+      `, ['wechat', order_id]);
     }
     
     res.json({
@@ -128,7 +151,7 @@ router.get('/:payment_id', async (req, res) => {
       WHERE p.id = ?
     `;
     
-    const [rows] = await db.query(query, [payment_id]);
+    const rows = await db.query(query, [payment_id]);
     
     if (rows.length === 0) {
       return res.status(404).json({
@@ -163,7 +186,7 @@ router.get('/order/:order_id', async (req, res) => {
       ORDER BY created_at DESC
     `;
     
-    const [rows] = await db.query(query, [order_id]);
+    const rows = await db.query(query, [order_id]);
     
     res.json({
       success: true,
@@ -193,7 +216,7 @@ router.get('/statistics/summary', async (req, res) => {
       FROM payments
     `;
     
-    const [rows] = await db.query(query);
+    const rows = await db.query(query);
     
     const summary = rows[0];
     summary.success_rate = summary.total_payments > 0 
