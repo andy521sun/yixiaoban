@@ -25,7 +25,7 @@ class HospitalDetailPage extends StatelessWidget {
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [const Color(0xFF1A73E8).withOpacity(0.8), const Color(0xFF4285F4)],
+                  colors: [const Color(0xFF1A73E8).withValues(alpha: 0.8), const Color(0xFF4285F4)],
                 ),
               ),
               child: Center(
@@ -39,7 +39,7 @@ class HospitalDetailPage extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(level, style: const TextStyle(color: Colors.white, fontSize: 13)),

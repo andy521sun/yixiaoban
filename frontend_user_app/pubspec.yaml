@@ -1,0 +1,91 @@
+name: yixiaoban_app
+description: 医小伴陪诊APP
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  
+  # 状态管理
+  provider: ^6.1.1
+  riverpod: ^2.4.0
+  
+  # 网络请求
+  dio: ^5.3.3
+  retrofit: ^4.0.1
+  
+  # 本地存储
+  shared_preferences: ^2.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # 路由
+  go_router: ^13.0.0
+  
+  # UI组件
+  flutter_screenutil: ^5.9.0
+  cached_network_image: ^3.3.0
+  flutter_svg: ^2.0.9
+  photo_view: ^0.14.0
+  pull_to_refresh: ^2.0.0
+  flutter_staggered_grid_view: ^0.7.0
+  
+  # 表单验证
+  formz: ^0.5.1
+  
+  # 地图定位
+  amap_flutter_location: ^3.0.0
+  amap_flutter_map: ^3.0.0
+  
+  # 聊天功能
+  socket_io_client: ^2.0.3
+  image_picker: ^1.0.4
+  record: ^5.0.0
+  
+  # 支付
+  fluwx: ^4.0.0
+  alipay_kit: ^3.0.0
+  
+  # 推送
+  jpush_flutter: ^2.4.0
+  
+  # 工具类
+  intl: ^0.18.1
+  url_launcher: ^6.2.1
+  permission_handler: ^10.4.4
+  package_info_plus: ^4.0.2
+  device_info_plus: ^9.1.0
+  
+  # 图表
+  fl_chart: ^0.65.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  retrofit_generator: ^5.0.0
+  hive_generator: ^2.0.1
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/fonts/
+    
+  fonts:
+    - family: PingFang
+      fonts:
+        - asset: assets/fonts/PingFang-Regular.ttf
+        - asset: assets/fonts/PingFang-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PingFang-Bold.ttf
+          weight: 700

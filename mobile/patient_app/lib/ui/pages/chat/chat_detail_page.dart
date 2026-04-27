@@ -1,4 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+// import deprecated
+import '../../../core/config/app_config.dart';
 import './widgets/message_bubble.dart';
 import './widgets/message_input.dart';
 import './models/chat_message.dart';
@@ -122,10 +127,50 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 
   void _setupWebSocket() {
-    // TODO: 集成WebSocket服务
+    final wsService = context.read<dynamic>();
+    
+    // 连接WebSocket
+    if (!wsService.isConnected && !wsService.isConnecting) {
+      wsService.connect();
+    }
+    
     // 监听新消息
-    // 更新消息状态
-    // 处理连接状态
+    wsService.addEventListener('chat_message', _handleNewMessage);
+    wsService.addListener(_onWsConnected);
+  }
+
+  void _onWsConnected() {
+    if (mounted) setState(() {});
+  }
+
+  void _handleNewMessage(dynamic data) {
+    if (!mounted) return;
+    final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
+    final msg = ChatMessage(
+      id: map['message_id'] ?? 'msg_${DateTime.now().millisecondsSinceEpoch}',
+      senderId: map['sender_id'] ?? '',
+      receiverId: map['receiver_id'] ?? '',
+      content: map['content'] ?? '',
+      timestamp: DateTime.now(),
+      status: MessageStatus.sent,
+      orderId: map['order_id'],
+    );
+    setState(() => _messages.add(msg));
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    final wsService = context.read<dynamic>();
+    wsService.removeEventListener('chat_message', _handleNewMessage);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _onSendMessage(String text) {
@@ -143,8 +188,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _messages.add(newMessage);
     });
 
-    // TODO: 通过WebSocket发送消息
-    _sendMessageViaWebSocket(newMessage);
+    _sendMessageViaApi(newMessage);
 
     // 滚动到底部
     if (_scrollController.hasClients) {
@@ -156,32 +200,60 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
-  void _sendMessageViaWebSocket(ChatMessage message) {
-    // 模拟发送过程
-    Future.delayed(const Duration(seconds: 1), () {
+  void _sendMessageViaApi(ChatMessage message) {
+    final wsService = context.read<dynamic>();
+    
+    if (wsService.isConnected) {
+      // 通过WebSocket发送
+      wsService.sendChatMessage(
+        receiverId: message.receiverId,
+        content: message.content,
+        orderId: message.orderId,
+      );
+      _markMessageSent(message.id);
+    } else {
+      // HTTP备用
+      _sendViaHttp(message);
+    }
+  }
+
+  void _markMessageSent(String messageId) {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
       setState(() {
-        final index = _messages.indexWhere((msg) => msg.id == message.id);
+        final index = _messages.indexWhere((msg) => msg.id == messageId);
         if (index != -1) {
-          _messages[index] = message.copyWith(status: MessageStatus.sent);
+          _messages[index] = _messages[index].copyWith(status: MessageStatus.sent);
         }
       });
     });
+  }
 
-    // 模拟对方回复（仅用于演示）
-    if (message.content.contains('?')) {
-      Future.delayed(const Duration(seconds: 2), () {
-        _receiveMessage(
-          ChatMessage(
-            id: 'reply_${DateTime.now().millisecondsSinceEpoch}',
-            senderId: widget.otherUserId,
-            receiverId: widget.currentUserId,
-            content: '收到您的消息，我会尽快回复',
-            timestamp: DateTime.now().add(const Duration(seconds: 2)),
-            status: MessageStatus.sent,
-            orderId: widget.orderId,
-          ),
-        );
-      });
+  void _sendViaHttp(ChatMessage message) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/realtime/chat/send'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'receiver_id': message.receiverId,
+          'content': message.content,
+          'order_id': message.orderId,
+        }),
+      );
+      final data = jsonDecode(res.body);
+      if (data['success'] == true && mounted) {
+        _markMessageSent(message.id);
+      }
+    } catch (e) {
+      debugPrint('HTTP发送消息失败: $e');
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((msg) => msg.id == message.id);
+          if (index != -1) {
+            _messages[index] = _messages[index].copyWith(status: MessageStatus.failed);
+          }
+        });
+      }
     }
   }
 
@@ -297,7 +369,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         _messages.add(voiceMessage);
       });
 
-      _sendMessageViaWebSocket(voiceMessage);
+      _sendViaHttp(voiceMessage);
     }
   }
 
@@ -395,7 +467,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           title: const Text('用户信息'),
                           onTap: () {
                             Navigator.pop(context);
-                            // TODO: 查看用户信息
+                            // 查看用户信息（待实现）
                           },
                         ),
                         ListTile(
@@ -403,7 +475,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           title: const Text('消息通知设置'),
                           onTap: () {
                             Navigator.pop(context);
-                            // TODO: 通知设置
+                            // 通知设置（待实现）
                           },
                         ),
                         ListTile(
@@ -411,7 +483,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           title: const Text('清空聊天记录'),
                           onTap: () {
                             Navigator.pop(context);
-                            // TODO: 清空聊天记录
+                            // 清空聊天记录（待实现）
                           },
                         ),
                         ListTile(
@@ -419,7 +491,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           title: const Text('举报用户'),
                           onTap: () {
                             Navigator.pop(context);
-                            // TODO: 举报功能
+                            // 举报功能（待实现）
                           },
                         ),
                       ],

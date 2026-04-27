@@ -3,14 +3,15 @@ import '../models/chat_message.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
-  final bool isSentByMe;
   final String currentUserId;
 
   const MessageBubble({
     Key? key,
     required this.message,
     required this.currentUserId,
-  }) : isSentByMe = message.isSentByMe(currentUserId);
+  });
+
+  bool get isSentByMe => message.isSentByMe(currentUserId);
 
   @override
   Widget build(BuildContext context) {

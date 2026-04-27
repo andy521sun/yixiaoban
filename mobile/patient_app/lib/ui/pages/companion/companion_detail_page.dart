@@ -33,7 +33,7 @@ class CompanionDetailPage extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 40,
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                     child: Text(
                       name.isNotEmpty ? name[0] : '?',
                       style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
@@ -44,7 +44,7 @@ class CompanionDetailPage extends StatelessWidget {
                   if (experience > 0)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text('${experience}年经验', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+                      child: Text('${experience}年经验', style: TextStyle(color: Colors.white.withValues(alpha: 0.9))),
                     ),
                   const SizedBox(height: 12),
                   Row(
@@ -54,11 +54,11 @@ class CompanionDetailPage extends StatelessWidget {
                         const Icon(Icons.star, color: Colors.amber, size: 20),
                         const SizedBox(width: 4),
                         Text('$rating', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                        Container(width: 1, height: 16, color: Colors.white.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                        Container(width: 1, height: 16, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 12)),
                       ],
                       if (services > 0) ...[
-                        Text('$services单', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-                        Container(width: 1, height: 16, color: Colors.white.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                        Text('$services单', style: TextStyle(color: Colors.white.withValues(alpha: 0.9))),
+                        Container(width: 1, height: 16, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 12)),
                       ],
                       if (rate > 0)
                         Text('¥$rate/时', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -91,7 +91,7 @@ class CompanionDetailPage extends StatelessWidget {
                                 if (tag.isEmpty) return const SizedBox.shrink();
                                 return Chip(
                                   label: Text(tag, style: const TextStyle(fontSize: 13)),
-                                  backgroundColor: const Color(0xFF34A853).withOpacity(0.1),
+                                  backgroundColor: const Color(0xFF34A853).withValues(alpha: 0.1),
                                   side: BorderSide.none,
                                   padding: const EdgeInsets.symmetric(horizontal: 4),
                                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

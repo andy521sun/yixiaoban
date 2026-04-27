@@ -1,0 +1,1 @@
+ /root/.openclaw/workspace/yixiaoban_app/admin/build/web/favicon.png:  /root/.openclaw/workspace/yixiaoban_app/admin/web/favicon.png /root/.openclaw/workspace/yixiaoban_app/admin/web/index.html

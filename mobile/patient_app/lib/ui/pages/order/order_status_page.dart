@@ -197,7 +197,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
             // 订单状态时间线
             Text(
               '订单进度',
-              style: Theme.of(context).textTheme.headline6?.copyWith(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -232,7 +232,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                   children: [
                     Text(
                       '下一步',
-                      style: Theme.of(context).textTheme.subtitle1?.copyWith(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -271,7 +271,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                         const SizedBox(width: 8),
                         Text(
                           '温馨提示',
-                          style: Theme.of(context).textTheme.subtitle1?.copyWith(
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -342,10 +342,10 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
               width: 20,
               height: 20,
               decoration: BoxDecoration(
-                color: step['completed'] ? Colors.blue : Colors.grey[300],
+                color: step['completed'] ? Colors.blue : Colors.grey.shade300,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: step['completed'] ? Colors.blue : Colors.grey[300],
+                  color: step['completed'] ? Colors.blue : Colors.grey.shade300,
                   width: 2,
                 ),
               ),
@@ -359,7 +359,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
               Container(
                 width: 2,
                 height: 60,
-                color: step['completed'] ? Colors.blue : Colors.grey[300],
+                color: step['completed'] ? Colors.blue : Colors.grey.shade300,
               ),
           ],
         ),
@@ -410,7 +410,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -449,7 +449,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                side: BorderSide(color: Colors.grey[300]!),
+                side: BorderSide(color: Colors.grey.shade300!),
               ),
               child: Text(
                 '联系客服',

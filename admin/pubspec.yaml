@@ -1,0 +1,40 @@
+name: yixiaoban_admin
+description: 医小伴陪诊 - 管理后台
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # 状态管理
+  provider: ^6.1.1
+  
+  # 网络请求
+  http: ^1.2.2
+  
+  # 本地存储
+  shared_preferences: ^2.2.2
+  
+  # 路由
+  go_router: ^13.0.0
+  
+  # UI
+  flutter_screenutil: ^5.9.0
+  intl: ^0.18.1
+  fl_chart: ^0.65.0
+  cached_network_image: ^3.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/

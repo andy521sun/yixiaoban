@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../auth');
-const { query, transaction } = require('../db');
+const { query, execute } = require('../db');
 
 // 管理员中间件 - 只允许管理员访问
 const adminOnly = (req, res, next) => {
@@ -113,7 +113,7 @@ router.get('/dashboard/stats', async (req, res) => {
                 u.name,
                 u.phone,
                 COUNT(o.id) as completed_orders,
-                AVG(o.rating) as avg_rating,
+                AVG(o.patient_rating) as avg_rating,
                 SUM(o.total_amount) as total_earnings
             FROM users u
             LEFT JOIN orders o ON u.id = o.companion_id AND o.status = 'completed'
@@ -182,15 +182,13 @@ router.get('/users', async (req, res) => {
             queryParams.push(searchTerm, searchTerm);
         }
 
-        // 获取用户列表（排除重复列）
+        // 获取用户列表
         const users = await query(`
             SELECT 
-                u.id, u.phone, u.password_hash, u.name, u.avatar_url,
-                u.gender, u.birth_date, u.id_card, u.emergency_contact, u.emergency_phone,
-                u.role, u.status, u.created_at, u.updated_at,
-                COALESCE(w.balance, 0) as wallet_balance,
-                COALESCE(w.total_recharge, 0) as wallet_recharge,
-                COALESCE(w.total_consumption, 0) as wallet_consumption
+                u.*,
+                w.balance,
+                w.total_recharge,
+                w.total_consumption
             FROM users u
             LEFT JOIN user_wallets w ON u.id = w.user_id
             ${whereClause}
@@ -425,7 +423,7 @@ router.put('/users/:id', async (req, res) => {
         updateParams.push(id);
         
         // 执行更新
-        await query(`
+        await execute(`
             UPDATE users 
             SET ${updates.join(', ')}, updated_at = NOW()
             WHERE id = ?
@@ -509,14 +507,14 @@ router.post('/users/:id/wallet/adjust', async (req, res) => {
         }
         
         // 开始事务
-        await query('START TRANSACTION');
+        await execute('START TRANSACTION');
         
         try {
             // 更新钱包余额
             const updateField = adjustmentAmount > 0 ? 'total_recharge' : 'total_withdraw';
             const updateAmount = Math.abs(adjustmentAmount);
             
-            await query(`
+            await execute(`
                 UPDATE user_wallets 
                 SET balance = balance + ?,
                     ${updateField} = ${updateField} + ?,
@@ -532,7 +530,7 @@ router.post('/users/:id/wallet/adjust', async (req, res) => {
             // 记录调整流水
             const transactionId = `adjust_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             
-            await query(`
+            await execute(`
                 INSERT INTO wallet_transactions (
                     wallet_id, user_id, transaction_type, amount,
                     balance_before, balance_after, related_id, related_type,
@@ -550,7 +548,7 @@ router.post('/users/:id/wallet/adjust', async (req, res) => {
             ]);
             
             // 记录操作日志
-            await query(`
+            await execute(`
                 INSERT INTO operation_logs (
                     user_id, action, target_type, target_id, details, ip_address
                 ) VALUES (?, ?, ?, ?, ?, ?)
@@ -570,7 +568,7 @@ router.post('/users/:id/wallet/adjust', async (req, res) => {
                 req.ip || 'unknown'
             ]);
             
-            await query('COMMIT');
+            await execute('COMMIT');
             
             res.json({
                 success: true,
@@ -586,7 +584,7 @@ router.post('/users/:id/wallet/adjust', async (req, res) => {
             });
             
         } catch (error) {
-            await query('ROLLBACK');
+            await execute('ROLLBACK');
             throw error;
         }
         
@@ -669,13 +667,13 @@ router.get('/orders', async (req, res) => {
                 o.*,
                 p.name as patient_name,
                 p.phone as patient_phone,
-                c.real_name as companion_name,
-                c.hourly_rate as companion_rate,
+                c.name as companion_name,
+                c.phone as companion_phone,
                 h.name as hospital_name,
                 h.city as hospital_city
             FROM orders o
             LEFT JOIN users p ON o.patient_id = p.id
-            LEFT JOIN companions c ON o.companion_id = c.id
+            LEFT JOIN users c ON o.companion_id = c.id
             LEFT JOIN hospitals h ON o.hospital_id = h.id
             ${whereClause}
             ORDER BY o.created_at DESC
@@ -855,14 +853,14 @@ router.put('/orders/:id/status', async (req, res) => {
         }
         
         // 更新订单状态
-        await query(`
+        await execute(`
             UPDATE orders 
             SET status = ?, updated_at = NOW()
             WHERE id = ?
         `, [status, id]);
         
         // 记录操作日志
-        await query(`
+        await execute(`
             INSERT INTO operation_logs (
                 user_id, action, target_type, target_id, details, ip_address
             ) VALUES (?, ?, ?, ?, ?, ?)
@@ -884,7 +882,7 @@ router.put('/orders/:id/status', async (req, res) => {
         if (status === 'cancelled' && order.payment_status === 'paid') {
             // 这里可以触发自动退款逻辑
             // 暂时只记录日志
-            await query(`
+            await execute(`
                 INSERT INTO operation_logs (
                     user_id, action, target_type, target_id, details, ip_address
                 ) VALUES (?, ?, ?, ?, ?, ?)
@@ -980,14 +978,14 @@ router.put('/orders/:id/assign', async (req, res) => {
         }
         
         // 更新订单陪诊师
-        await query(`
+        await execute(`
             UPDATE orders 
             SET companion_id = ?, updated_at = NOW()
             WHERE id = ?
         `, [companion_id, id]);
         
         // 记录操作日志
-        await query(`
+        await execute(`
             INSERT INTO operation_logs (
                 user_id, action, target_type, target_id, details, ip_address
             ) VALUES (?, ?, ?, ?, ?, ?)
@@ -1006,7 +1004,7 @@ router.put('/orders/:id/assign', async (req, res) => {
         ]);
         
         // 发送系统通知给陪诊师
-        await query(`
+        await execute(`
             INSERT INTO system_notifications (
                 id, user_id, title, content, notification_type, related_id, related_type
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -1227,13 +1225,13 @@ router.post('/payments/:id/refund', async (req, res) => {
         }
         
         // 开始事务
-        await query('START TRANSACTION');
+        await execute('START TRANSACTION');
         
         try {
             // 创建退款记录
             const refundId = `refund_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             
-            await query(`
+            await execute(`
                 INSERT INTO refund_records (
                     id, payment_id, order_id, user_id, refund_amount, 
                     refund_reason, status, processed_by
@@ -1250,7 +1248,7 @@ router.post('/payments/:id/refund', async (req, res) => {
             
             // 如果是余额支付，退还到用户钱包
             if (payment.payment_method_code === 'balance') {
-                await query(`
+                await execute(`
                     UPDATE user_wallets 
                     SET balance = balance + ?,
                         total_withdraw = total_withdraw + ?,
@@ -1262,7 +1260,7 @@ router.post('/payments/:id/refund', async (req, res) => {
                 // 记录钱包交易
                 const wallet = await query('SELECT * FROM user_wallets WHERE user_id = ?', [payment.user_id]);
                 if (wallet.length > 0) {
-                    await query(`
+                    await execute(`
                         INSERT INTO wallet_transactions (
                             wallet_id, user_id, transaction_type, amount,
                             balance_before, balance_after, related_id, related_type,
@@ -1287,7 +1285,7 @@ router.post('/payments/:id/refund', async (req, res) => {
             if (Math.abs(newTotalRefunded - payment.amount) < 0.01) { // 全额退款
                 newPaymentStatus = 'refunded';
                 
-                await query(`
+                await execute(`
                     UPDATE payments 
                     SET payment_status = 'refunded',
                         refunded_at = NOW(),
@@ -1296,7 +1294,7 @@ router.post('/payments/:id/refund', async (req, res) => {
                 `, [id]);
                 
                 // 更新订单支付状态
-                await query(`
+                await execute(`
                     UPDATE orders 
                     SET payment_status = 'refunded',
                         updated_at = NOW()
@@ -1304,7 +1302,7 @@ router.post('/payments/:id/refund', async (req, res) => {
                 `, [payment.order_id]);
             } else {
                 // 部分退款，更新支付记录备注
-                await query(`
+                await execute(`
                     UPDATE payments 
                     SET refund_amount = ?,
                         updated_at = NOW()
@@ -1313,7 +1311,7 @@ router.post('/payments/:id/refund', async (req, res) => {
             }
             
             // 记录操作日志
-            await query(`
+            await execute(`
                 INSERT INTO operation_logs (
                     user_id, action, target_type, target_id, details, ip_address
                 ) VALUES (?, ?, ?, ?, ?, ?)
@@ -1336,7 +1334,7 @@ router.post('/payments/:id/refund', async (req, res) => {
             ]);
             
             // 发送系统通知给用户
-            await query(`
+            await execute(`
                 INSERT INTO system_notifications (
                     id, user_id, title, content, notification_type, related_id, related_type
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -1350,7 +1348,7 @@ router.post('/payments/:id/refund', async (req, res) => {
                 'refund_completed'
             ]);
             
-            await query('COMMIT');
+            await execute('COMMIT');
             
             res.json({
                 success: true,
@@ -1366,7 +1364,7 @@ router.post('/payments/:id/refund', async (req, res) => {
             });
             
         } catch (error) {
-            await query('ROLLBACK');
+            await execute('ROLLBACK');
             throw error;
         }
         
@@ -1483,13 +1481,13 @@ router.post('/hospitals', async (req, res) => {
         const hospitalId = `hosp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         // 创建医院
-        await query(`
+        await execute(`
             INSERT INTO hospitals (id, name, city, address, phone, description)
             VALUES (?, ?, ?, ?, ?, ?)
         `, [hospitalId, name, city, address, phone, description || '']);
         
         // 记录操作日志
-        await query(`
+        await execute(`
             INSERT INTO operation_logs (
                 user_id, action, target_type, target_id, details, ip_address
             ) VALUES (?, ?, ?, ?, ?, ?)
@@ -1593,14 +1591,14 @@ router.put('/hospitals/:id', async (req, res) => {
         updateParams.push(id);
         
         // 执行更新
-        await query(`
+        await execute(`
             UPDATE hospitals 
             SET ${updates.join(', ')}, updated_at = NOW()
             WHERE id = ?
         `, updateParams);
         
         // 记录操作日志
-        await query(`
+        await execute(`
             INSERT INTO operation_logs (
                 user_id, action, target_type, target_id, details, ip_address
             ) VALUES (?, ?, ?, ?, ?, ?)
@@ -1801,13 +1799,13 @@ router.put('/system/config/:key', async (req, res) => {
         
         if (configs.length === 0) {
             // 创建新配置
-            await query(`
+            await execute(`
                 INSERT INTO system_configs (config_key, config_value, description)
                 VALUES (?, ?, ?)
             `, [key, config_value, description || '']);
         } else {
             // 更新现有配置
-            await query(`
+            await execute(`
                 UPDATE system_configs 
                 SET config_value = ?, 
                     description = ?,
@@ -1817,7 +1815,7 @@ router.put('/system/config/:key', async (req, res) => {
         }
         
         // 记录操作日志
-        await query(`
+        await execute(`
             INSERT INTO operation_logs (
                 user_id, action, target_type, target_id, details, ip_address
             ) VALUES (?, ?, ?, ?, ?, ?)
@@ -1851,206 +1849,6 @@ router.put('/system/config/:key', async (req, res) => {
             message: error.message
         });
     }
-});
-
-// ==================== 陪诊师管理 ====================
-
-/**
- * 获取陪诊师列表（含搜索）
- * GET /api/admin/companions
- */
-router.get('/companions', async (req, res) => {
-  try {
-    const { search = '' } = req.query;
-    let sql = `
-      SELECT c.*, u.name, u.phone, u.status as user_status
-      FROM companions c
-      LEFT JOIN users u ON c.user_id = u.id
-    `;
-    let params = [];
-    if (search) {
-      sql += ' WHERE c.real_name LIKE ? OR u.phone LIKE ? OR u.name LIKE ?';
-      const s = '%' + search + '%';
-      params = [s, s, s];
-    }
-    sql += ' ORDER BY c.service_count DESC';
-    
-    const companions = await query(sql, params);
-    res.json({ success: true, data: companions });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-/**
- * 获取单个陪诊师详情
- * GET /api/admin/companions/:id
- */
-router.get('/companions/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const companions = await query(`
-      SELECT c.*, u.name, u.phone, u.status as user_status
-      FROM companions c
-      LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.id = ?
-    `, [id]);
-    if (!companions[0]) {
-      return res.status(404).json({ success: false, message: '陪诊师不存在' });
-    }
-    res.json({ success: true, data: companions[0] });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-/**
- * 创建陪诊师（同时创建用户账号）
- * POST /api/admin/companions
- */
-router.post('/companions', async (req, res) => {
-  try {
-    const { real_name, phone, id_card, experience_years, hourly_rate, specialty, introduction } = req.body;
-    if (!real_name || !phone) {
-      return res.status(400).json({ success: false, message: '姓名和手机号不能为空' });
-    }
-    // 检查手机号是否已注册
-    const existing = await query('SELECT id FROM users WHERE phone = ?', [phone]);
-    if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: '该手机号已被注册' });
-    }
-    // 创建用户
-    const bcrypt = require('bcryptjs');
-    const password_hash = await bcrypt.hash('123456', 10);
-    const userId = 'companion_user_' + Date.now();
-    await query(`
-      INSERT INTO users (id, phone, password_hash, name, role, status)
-      VALUES (?, ?, ?, ?, 'companion', 'active')
-    `, [userId, phone, password_hash, real_name]);
-    // 创建陪诊师记录
-    const compId = 'comp_' + Date.now();
-    const specialtyStr = specialty ? JSON.stringify(specialty.split(/[,，]/).map(s => s.trim()).filter(Boolean)) : '[]';
-    await query(`
-      INSERT INTO companions (id, user_id, real_name, id_card, experience_years, hourly_rate, specialty, introduction, is_available, is_certified)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
-    `, [compId, userId, real_name, id_card || null, experience_years || 1, hourly_rate || 200, specialtyStr, introduction || '']);
-    res.json({ success: true, message: '陪诊师创建成功', data: { id: compId } });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-/**
- * 更新陪诊师信息
- * PUT /api/admin/companions/:id
- */
-router.put('/companions/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { real_name, phone, id_card, experience_years, hourly_rate, specialty, introduction } = req.body;
-    
-    // 获取当前记录
-    const existing = await query('SELECT * FROM companions WHERE id = ?', [id]);
-    if (!existing[0]) {
-      return res.status(404).json({ success: false, message: '陪诊师不存在' });
-    }
-    const comp = existing[0];
-    
-    // 更新陪诊师表
-    const updates = [];
-    const params = [];
-    if (real_name !== undefined) { updates.push('real_name = ?'); params.push(real_name); }
-    if (id_card !== undefined) { updates.push('id_card = ?'); params.push(id_card); }
-    if (experience_years !== undefined) { updates.push('experience_years = ?'); params.push(experience_years); }
-    if (hourly_rate !== undefined) { updates.push('hourly_rate = ?'); params.push(hourly_rate); }
-    if (specialty !== undefined) { 
-      const s = specialty ? JSON.stringify(specialty.split(/[,，]/).map(s => s.trim()).filter(Boolean)) : '[]';
-      updates.push('specialty = ?'); params.push(s);
-    }
-    if (introduction !== undefined) { updates.push('introduction = ?'); params.push(introduction); }
-    
-    if (updates.length > 0) {
-      params.push(id);
-      await query(`UPDATE companions SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, params);
-    }
-    
-    // 更新用户表
-    if (real_name !== undefined || phone !== undefined) {
-      const userUpdates = [];
-      const userParams = [];
-      if (real_name !== undefined) { userUpdates.push('name = ?'); userParams.push(real_name); }
-      if (phone !== undefined) { userUpdates.push('phone = ?'); userParams.push(phone); }
-      if (userUpdates.length > 0) {
-        userParams.push(comp.user_id);
-        await query(`UPDATE users SET ${userUpdates.join(', ')}, updated_at = NOW() WHERE id = ?`, userParams);
-      }
-    }
-    
-    res.json({ success: true, message: '更新成功' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-/**
- * 删除陪诊师
- * DELETE /api/admin/companions/:id
- */
-router.delete('/companions/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const existing = await query('SELECT * FROM companions WHERE id = ?', [id]);
-    if (!existing[0]) {
-      return res.status(404).json({ success: false, message: '陪诊师不存在' });
-    }
-    await query('DELETE FROM companions WHERE id = ?', [id]);
-    res.json({ success: true, message: '删除成功' });
-  } catch (error) {
-    console.error('删除陪诊师失败:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-/**
- * 订单操作：开始服务
- * POST /api/admin/orders/:id/start
- */
-router.post('/orders/:id/start', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const existing = await query('SELECT * FROM orders WHERE id = ?', [id]);
-    if (!existing[0]) {
-      return res.status(404).json({ success: false, message: '订单不存在' });
-    }
-    if (existing[0].status !== 'confirmed') {
-      return res.status(400).json({ success: false, message: '只有已确认的订单才能开始服务' });
-    }
-    await query(`UPDATE orders SET status = 'in_progress', updated_at = NOW() WHERE id = ?`, [id]);
-    res.json({ success: true, message: '服务已开始' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-/**
- * 订单操作：完成服务
- * POST /api/admin/orders/:id/complete
- */
-router.post('/orders/:id/complete', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const existing = await query('SELECT * FROM orders WHERE id = ?', [id]);
-    if (!existing[0]) {
-      return res.status(404).json({ success: false, message: '订单不存在' });
-    }
-    if (existing[0].status !== 'in_progress') {
-      return res.status(400).json({ success: false, message: '只有服务中的订单才能完成' });
-    }
-    await query(`UPDATE orders SET status = 'completed', updated_at = NOW(), completed_at = NOW() WHERE id = ?`, [id]);
-    res.json({ success: true, message: '服务已完成' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
 });
 
 module.exports = router;

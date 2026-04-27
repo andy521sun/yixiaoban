@@ -9,6 +9,7 @@ import 'ui/pages/companion/companion_detail_page.dart';
 import 'ui/pages/order/order_list_page.dart';
 import 'ui/pages/order/order_detail_page.dart';
 import 'ui/pages/appointment/appointment_page.dart';
+import 'ui/pages/ai/ai_consult_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -93,6 +94,8 @@ class MyApp extends StatelessWidget {
         return MaterialPageRoute(builder: (_) => OrderDetailPage(data: args));
       case '/appointment':
         return MaterialPageRoute(builder: (_) => const AppointmentPage());
+      case '/ai/consult':
+        return MaterialPageRoute(builder: (_) => const AiConsultPage());
       default:
         return MaterialPageRoute(builder: (_) => const MainScaffold());
     }
