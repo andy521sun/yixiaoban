@@ -14,7 +14,11 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // 中间件
-app.use(helmet());
+// 完全移除 helmet，它默认的安全头阻止了 Flutter Web
+// 只保留最基本的 CORS
+app.use(cors());
+app.disable('x-powered-by');
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -28,9 +32,7 @@ const staticOptions = {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    if (path.endsWith('.html')) {
-      res.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: https: http:;");
-    }
+    // CSP 由 helmet 统一管理
   }
 };
 
@@ -168,6 +170,15 @@ app.use('/api/sms', smsRouter);
 // 陪诊师端订单管理路由（v2 增强版）
 const companionOrdersRouter = require('./routes/companion_orders_v2');
 app.use('/api/companion', companionOrdersRouter);
+
+// 医生认证/入驻路由
+const doctorRouter = require('./routes/doctor_certification');
+app.use('/api/doctor', doctorRouter);
+app.use('/api/doctors', doctorRouter);
+
+// 在线问诊路由
+const consultationRouter = require('./routes/consultation');
+app.use('/api/consultations', consultationRouter);
 
 // 用户认证路由
 app.post('/api/auth/register', async (req, res) => {

@@ -1851,4 +1851,87 @@ router.put('/system/config/:key', async (req, res) => {
     }
 });
 
+// ============= 医生认证审核 =============
+
+/**
+ * GET /api/admin/doctors/certifications - 获取医生认证列表
+ */
+router.get('/doctors/certifications', async (req, res) => {
+  try {
+    const { status, page = 1, page_size = 20 } = req.query;
+    const offset = (page - 1) * page_size;
+
+    let sql = `
+      SELECT dc.*, u.name as user_name, u.phone, u.avatar_url
+      FROM doctor_certifications dc
+      JOIN users u ON u.id = dc.user_id
+    `;
+    const params = [];
+    const validStatuses = ['pending', 'approved', 'rejected'];
+    if (status && validStatuses.includes(status)) {
+      sql += ' WHERE dc.status = ?';
+      params.push(status);
+    }
+    sql += ' ORDER BY dc.created_at DESC LIMIT ? OFFSET ?';
+    params.push(Number(page_size), offset);
+
+    const rows = await query(sql, params);
+    const [{ total }] = await query(
+      'SELECT COUNT(*) as total FROM doctor_certifications' +
+      (status && validStatuses.includes(status) ? ' WHERE status = ?' : ''),
+      status && validStatuses.includes(status) ? [status] : []
+    );
+
+    res.json({ success: true, data: rows, total, page: Number(page), page_size: Number(page_size) });
+  } catch (error) {
+    console.error('获取医生认证列表失败:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/doctors/certifications/:id/review - 审核医生认证
+ */
+router.post('/doctors/certifications/:id/review', async (req, res) => {
+  try {
+    const { action, reject_reason } = req.body; // action: 'approve' | 'reject'
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ success: false, message: '操作类型无效' });
+    }
+
+    const certs = await query('SELECT * FROM doctor_certifications WHERE id = ?', [req.params.id]);
+    if (certs.length === 0) return res.status(404).json({ success: false, message: '认证记录不存在' });
+    if (certs[0].status !== 'pending') return res.status(400).json({ success: false, message: '该申请已处理' });
+
+    const cert = certs[0];
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+    await query(
+      `UPDATE doctor_certifications SET status = ?, reject_reason = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?`,
+      [newStatus, action === 'reject' ? (reject_reason || '') : null, req.user.id, req.params.id]
+    );
+
+    if (action === 'approve') {
+      // 更新用户角色为 doctor，标记已认证
+      await query(
+        `UPDATE users SET role = 'doctor', is_verified = 1, 
+         title = ?, department = ?, hospital_affiliation = ? WHERE id = ?`,
+        [cert.title, cert.department, cert.hospital_name, cert.user_id]
+      );
+      // 插入默认服务价格
+      await query(
+        `INSERT INTO doctor_service_pricing (doctor_id, service_type, price) VALUES
+         (?, 'text_consult', 50.00), (?, 'image_consult', 80.00), (?, 'video_consult', 150.00)
+         ON DUPLICATE KEY UPDATE price = VALUES(price)`,
+        [cert.user_id, cert.user_id, cert.user_id]
+      );
+    }
+
+    res.json({ success: true, message: action === 'approve' ? '已通过认证' : '已驳回' });
+  } catch (error) {
+    console.error('审核医生认证失败:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

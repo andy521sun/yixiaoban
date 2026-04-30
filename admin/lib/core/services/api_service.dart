@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://andysun521.online/api';
+  static const String baseUrl = '/api';
   String? _token;
 
   void setToken(String? token) => _token = token;

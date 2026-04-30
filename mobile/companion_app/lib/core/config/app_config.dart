@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppConfig {
   // API 配置
-  static const String baseUrl = 'https://andysun521.online/api';
+  static const String baseUrl = '/api';
   static const String companionUrl = '$baseUrl/companion';
   static const String authUrl = '$baseUrl/auth';
   static const String wsUrl = 'wss://andysun521.online/ws';

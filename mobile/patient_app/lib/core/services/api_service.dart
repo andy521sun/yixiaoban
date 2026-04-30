@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 /// 患者端 API 服务
 /// 连接真实后端，带 token 认证
 class ApiService {
-  static const String _baseUrl = 'https://andysun521.online/api';
+  static const String _baseUrl = '/api';
 
   String? _token;
 
