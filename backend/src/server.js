@@ -183,6 +183,11 @@ app.use('/api/consultations', consultationMessagesRouter);
 const consultationRouter = require('./routes/consultation');
 app.use('/api/consultations', consultationRouter);
 
+// 电子处方路由（挂载在 consultations 和独立路径）
+const prescriptionRouter = require('./routes/prescription');
+app.use('/api/consultations', prescriptionRouter);
+app.use('/api/prescriptions', prescriptionRouter);
+
 // 用户认证路由
 app.post('/api/auth/register', async (req, res) => {
   try {
