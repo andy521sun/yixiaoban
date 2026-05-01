@@ -2004,4 +2004,199 @@ router.post('/withdraws/:id/review', async (req, res) => {
   }
 });
 
+// ============= 问诊管理 =============
+
+/**
+ * GET /api/admin/consultations - 问诊列表（管理后台）
+ */
+router.get('/consultations', async (req, res) => {
+  try {
+    const { status, page = 1, page_size = 20 } = req.query;
+    const offset = (page - 1) * page_size;
+
+    let sql = `
+      SELECT c.*, 
+        u1.name as patient_name, u1.phone as patient_phone,
+        u2.name as doctor_name, u2.phone as doctor_phone
+      FROM consultations c
+      JOIN users u1 ON u1.id = c.patient_id
+      LEFT JOIN users u2 ON u2.id = c.doctor_id
+    `;
+    const params = [];
+    const validStatuses = ['waiting', 'accepted', 'in_progress', 'completed', 'cancelled'];
+    if (status && validStatuses.includes(status)) {
+      sql += ' WHERE c.status = ?';
+      params.push(status);
+    }
+    sql += ' ORDER BY c.created_at DESC LIMIT ? OFFSET ?';
+    params.push(Number(page_size), offset);
+
+    const rows = await query(sql, params);
+    const [{ total }] = await query('SELECT COUNT(*) as total FROM consultations');
+
+    res.json({ success: true, data: rows, total });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/consultations/stats - 问诊统计
+ */
+router.get('/consultations/stats', async (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    // 总体统计
+    const [total] = await query('SELECT COUNT(*) as total FROM consultations');
+
+    // 各状态统计
+    const statusStats = await query(`
+      SELECT status, COUNT(*) as count FROM consultations
+      GROUP BY status
+    `);
+
+    // 各类型统计
+    const typeStats = await query(`
+      SELECT consult_type, COUNT(*) as count FROM consultations
+      WHERE consult_type IS NOT NULL
+      GROUP BY consult_type
+    `);
+
+    // 每日趋势（近7天）
+    const dailyTrend = await query(`
+      SELECT DATE(created_at) as date, COUNT(*) as count
+      FROM consultations
+      WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+      GROUP BY DATE(created_at)
+      ORDER BY date
+    `);
+
+    // 医生排行（接诊量）
+    const doctorRanking = await query(`
+      SELECT u.id, u.name, u.title, u.department, COUNT(*) as consultations
+      FROM consultations c
+      JOIN users u ON u.id = c.doctor_id
+      WHERE c.doctor_id IS NOT NULL
+      GROUP BY u.id, u.name, u.title, u.department
+      ORDER BY consultations DESC
+      LIMIT 10
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        total_count: Number(total?.total || 0),
+        by_status: statusStats.reduce((acc, r) => { acc[r.status] = Number(r.count); return acc; }, {}),
+        by_type: typeStats.reduce((acc, r) => { acc[r.consult_type] = Number(r.count); return acc; }, {}),
+        daily_trend: dailyTrend,
+        doctor_ranking: doctorRanking
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/consultations/:id - 问诊详情
+ */
+router.get('/consultations/:id', async (req, res) => {
+  try {
+    const [consult] = await query(`
+      SELECT c.*,
+        u1.name as patient_name, u1.phone as patient_phone,
+        u2.name as doctor_name, u2.phone as doctor_phone, u2.title as doctor_title
+      FROM consultations c
+      JOIN users u1 ON u1.id = c.patient_id
+      LEFT JOIN users u2 ON u2.id = c.doctor_id
+      WHERE c.id = ?
+    `, [req.params.id]);
+
+    if (!consult) return res.status(404).json({ success: false, message: '问诊记录不存在' });
+
+    const messages = await query(
+      'SELECT * FROM consultation_messages WHERE consultation_id = ? ORDER BY created_at ASC',
+      [req.params.id]
+    );
+
+    const [prescription] = await query(
+      'SELECT * FROM prescriptions WHERE consultation_id = ? ORDER BY created_at DESC LIMIT 1',
+      [req.params.id]
+    );
+    let items = [];
+    if (prescription) {
+      items = await query('SELECT * FROM prescription_items WHERE prescription_id = ?', [prescription.id]);
+    }
+
+    res.json({ success: true, data: { consultation: consult, messages, prescription, prescription_items: items } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============= 处方管理 =============
+
+/**
+ * GET /api/admin/prescriptions - 处方列表
+ */
+router.get('/prescriptions', async (req, res) => {
+  try {
+    const { status, page = 1, page_size = 20 } = req.query;
+    const offset = (page - 1) * page_size;
+
+    let sql = `
+      SELECT p.*,
+        u1.name as doctor_name,
+        u2.name as patient_name
+      FROM prescriptions p
+      JOIN users u1 ON u1.id = p.doctor_id
+      JOIN users u2 ON u2.id = p.patient_id
+    `;
+    const params = [];
+    const validStatuses = ['draft', 'signed', 'dispensed', 'cancelled'];
+    if (status && validStatuses.includes(status)) {
+      sql += ' WHERE p.status = ?';
+      params.push(status);
+    }
+    sql += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
+    params.push(Number(page_size), offset);
+
+    const rows = await query(sql, params);
+    const [{ total }] = await query('SELECT COUNT(*) as total FROM prescriptions');
+
+    res.json({ success: true, data: rows, total });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/prescriptions/:id - 处方详情
+ */
+router.get('/prescriptions/:id', async (req, res) => {
+  try {
+    const [prescription] = await query(`
+      SELECT p.*,
+        u1.name as doctor_name, u1.title as doctor_title,
+        u2.name as patient_name, u2.phone as patient_phone
+      FROM prescriptions p
+      JOIN users u1 ON u1.id = p.doctor_id
+      JOIN users u2 ON u2.id = p.patient_id
+      WHERE p.id = ?
+    `, [req.params.id]);
+
+    if (!prescription) return res.status(404).json({ success: false, message: '处方不存在' });
+
+    const items = await query(
+      'SELECT * FROM prescription_items WHERE prescription_id = ?',
+      [req.params.id]
+    );
+
+    res.json({ success: true, data: { prescription, items } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
