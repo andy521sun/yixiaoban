@@ -1934,4 +1934,74 @@ router.post('/doctors/certifications/:id/review', async (req, res) => {
   }
 });
 
+// ============= 提现审核 =============
+
+/**
+ * GET /api/admin/withdraws - 提现申请列表
+ */
+router.get('/withdraws', async (req, res) => {
+  try {
+    const { status, page = 1, page_size = 20 } = req.query;
+    const offset = (page - 1) * page_size;
+
+    let sql = `
+      SELECT wr.*, u.name as user_name, u.phone
+      FROM withdraw_requests wr
+      JOIN users u ON u.id = wr.user_id
+    `;
+    const params = [];
+    const validStatuses = ['pending', 'approved', 'rejected', 'completed'];
+    if (status && validStatuses.includes(status)) {
+      sql += ' WHERE wr.status = ?';
+      params.push(status);
+    }
+    sql += ' ORDER BY wr.created_at DESC LIMIT ? OFFSET ?';
+    params.push(Number(page_size), offset);
+
+    const rows = await query(sql, params);
+    const [{ total }] = await query('SELECT COUNT(*) as total FROM withdraw_requests');
+
+    res.json({ success: true, data: rows, total });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/withdraws/:id/review - 审核提现
+ */
+router.post('/withdraws/:id/review', async (req, res) => {
+  try {
+    const { action, reject_reason } = req.body; // action: 'approve' | 'reject' | 'complete'
+    const validActions = ['approve', 'reject', 'complete'];
+    if (!validActions.includes(action)) return res.status(400).json({ success: false, message: '操作类型无效' });
+
+    const [w] = await query('SELECT * FROM withdraw_requests WHERE id = ?', [req.params.id]);
+    if (!w) return res.status(404).json({ success: false, message: '提现记录不存在' });
+
+    if (action === 'approve') {
+      if (w.status !== 'pending') return res.status(400).json({ success: false, message: '仅可审核待处理的申请' });
+      await query(
+        "UPDATE withdraw_requests SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
+        [req.user.id, req.params.id]
+      );
+    } else if (action === 'reject') {
+      await query(
+        'UPDATE withdraw_requests SET status = ?, reject_reason = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?',
+        ['rejected', reject_reason || '', req.user.id, req.params.id]
+      );
+    } else if (action === 'complete') {
+      if (w.status !== 'approved') return res.status(400).json({ success: false, message: '仅可完成已批准的申请' });
+      await query(
+        'UPDATE withdraw_requests SET status = ?, reviewed_by = ?, reviewed_at = NOW(), completed_at = NOW() WHERE id = ?',
+        ['completed', req.user.id, req.params.id]
+      );
+    }
+
+    res.json({ success: true, message: '操作成功' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

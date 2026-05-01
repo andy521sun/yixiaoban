@@ -188,6 +188,10 @@ const prescriptionRouter = require('./routes/prescription');
 app.use('/api/consultations', prescriptionRouter);
 app.use('/api/prescriptions', prescriptionRouter);
 
+// 医生财务路由
+const doctorFinanceRouter = require('./routes/doctor_finance');
+app.use('/api/doctor', doctorFinanceRouter);
+
 // 用户认证路由
 app.post('/api/auth/register', async (req, res) => {
   try {
