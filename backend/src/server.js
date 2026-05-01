@@ -176,7 +176,10 @@ const doctorRouter = require('./routes/doctor_certification');
 app.use('/api/doctor', doctorRouter);
 app.use('/api/doctors', doctorRouter);
 
-// 在线问诊路由
+// 在线问诊路由（注意：必须先注册 messages 路由再注册主路由，避免被 /:id 捕获）
+const consultationMessagesRouter = require('./routes/consultation_messages');
+app.use('/api/consultations', consultationMessagesRouter);
+
 const consultationRouter = require('./routes/consultation');
 app.use('/api/consultations', consultationRouter);
 

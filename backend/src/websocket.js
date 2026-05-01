@@ -152,6 +152,10 @@ class WebSocketServer {
                 case 'call_response':
                     await this.handleCallResponse(userId, message);
                     break;
+
+                case 'consultation_typing':
+                    this.handleConsultationTyping(userId, message);
+                    break;
                     
                 default:
                     this.sendError(ws, `未知的消息类型: ${message.type}`);
@@ -254,6 +258,24 @@ class WebSocketServer {
             data: {
                 senderId,
                 orderId,
+                isTyping,
+                timestamp: new Date().toISOString()
+            }
+        });
+    }
+
+    /**
+     * 处理问诊输入状态
+     */
+    handleConsultationTyping(senderId, message) {
+        const { consultationId, receiverId, isTyping } = message.data;
+        if (!receiverId) return;
+
+        this.sendToUser(receiverId, {
+            type: 'consultation_typing',
+            data: {
+                senderId,
+                consultationId,
                 isTyping,
                 timestamp: new Date().toISOString()
             }

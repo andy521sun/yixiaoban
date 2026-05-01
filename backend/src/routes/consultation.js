@@ -36,9 +36,15 @@ router.post('/', async (req, res) => {
       [req.user.id, doctor_id, consult_type, chief_complaint, present_illness, past_history, severity || 'normal']
     );
 
+    // 查询刚插入的记录获取 UUID (id 是 UUID() 生成的)
+    const [newConsult] = await query(
+      'SELECT id FROM consultations WHERE patient_id = ? AND doctor_id = ? ORDER BY created_at DESC LIMIT 1',
+      [req.user.id, doctor_id]
+    );
+
     res.status(201).json({
       message: '问诊已发起，等待医生接诊',
-      consultation_id: result.insertId || result.insertId
+      consultation_id: newConsult ? newConsult.id : result.insertId
     });
   } catch (error) {
     console.error('发起问诊失败:', error);
@@ -142,7 +148,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/:id/accept', async (req, res) => {
   try {
-    if (req.user.role !== 'doctor') return res.status(403).json({ error: '仅医生可操作' });
+    if (req.user.role !== 'doctor' && req.user.role !== 'companion') return res.status(403).json({ error: '仅医生可操作' });
 
     const [consult] = await query(
       'SELECT * FROM consultations WHERE id = ? AND doctor_id = ? AND status = ?',
@@ -167,12 +173,12 @@ router.post('/:id/accept', async (req, res) => {
  */
 router.post('/:id/complete', async (req, res) => {
   try {
-    if (req.user.role !== 'doctor') return res.status(403).json({ error: '仅医生可操作' });
+    if (req.user.role !== 'doctor' && req.user.role !== 'companion') return res.status(403).json({ error: '仅医生可操作' });
 
     const { diagnosis, advice } = req.body;
     const [consult] = await query(
-      'SELECT * FROM consultations WHERE id = ? AND doctor_id = ? AND status = ?',
-      [req.params.id, req.user.id, 'in_progress']
+      "SELECT * FROM consultations WHERE id = ? AND doctor_id = ? AND status IN ('in_progress', 'accepted')",
+      [req.params.id, req.user.id]
     );
     if (!consult) return res.status(404).json({ error: '问诊不存在或状态不正确' });
 
