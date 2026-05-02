@@ -6,6 +6,7 @@ import 'ui/pages/consultation/consultation_list_page.dart';
 import 'ui/pages/consultation/doctor_cert_page.dart';
 import 'ui/pages/profile/profile_page.dart';
 import 'ui/pages/finance/finance_page.dart';
+import 'ui/pages/profile/service_pricing_page.dart';
 import 'ui/pages/consultation/consultation_chat_page_doctor.dart';
 
 void main() {
@@ -72,6 +73,8 @@ class DoctorApp extends StatelessWidget {
               return MaterialPageRoute(builder: (_) => const DoctorCertPage());
             case '/finance':
               return MaterialPageRoute(builder: (_) => const FinancePage());
+            case '/service-pricing':
+              return MaterialPageRoute(builder: (_) => const ServicePricingPage());
             case '/consultation/chat':
               final args = settings.arguments as Map<String, dynamic>;
               return MaterialPageRoute(

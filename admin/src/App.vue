@@ -34,6 +34,21 @@
             <span>陪诊师管理</span>
           </el-menu-item>
           
+          <el-menu-item index="/consultations">
+            <el-icon><ChatDotSquare /></el-icon>
+            <span>问诊管理</span>
+          </el-menu-item>
+          
+          <el-menu-item index="/doctors/certifications">
+            <el-icon><Checked /></el-icon>
+            <span>医生认证审核</span>
+          </el-menu-item>
+          
+          <el-menu-item index="/prescriptions">
+            <el-icon><DocumentCopy /></el-icon>
+            <span>处方管理</span>
+          </el-menu-item>
+          
           <el-sub-menu index="system">
             <template #title>
               <el-icon><Setting /></el-icon>
@@ -144,7 +159,9 @@ import {
   Expand,
   Fold,
   ArrowDown,
-  SwitchButton
+  SwitchButton,
+  ChatDotSquare,
+  Checked
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

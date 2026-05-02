@@ -220,7 +220,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import OrderDetail from '../components/OrderDetail.vue'
 import OrderEditForm from '../components/OrderEditForm.vue'
 
