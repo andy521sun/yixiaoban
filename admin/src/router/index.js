@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import Login from '../views/Login.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Orders from '../views/Orders.vue'
 import Users from '../views/Users.vue'
@@ -9,6 +10,12 @@ import Consultations from '../views/Consultations.vue'
 import Prescriptions from '../views/Prescriptions.vue'
 
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    meta: { title: '登录', noAuth: true }
+  },
   {
     path: '/',
     name: 'Dashboard',
@@ -62,15 +69,31 @@ const router = createRouter({
   routes
 })
 
+// Token 工具
+function getAdminToken() {
+  try { return localStorage.getItem('admin_token') || '' } catch { return '' }
+}
+
+// 路由守卫 — 未登录自动跳登录页
 router.beforeEach((to, from, next) => {
   if (to.meta.title) {
     document.title = `${to.meta.title} - 医小伴管理后台`
   }
-  if (to.meta.requiresAuth) {
-    next()
-  } else {
-    next()
+
+  const token = getAdminToken()
+  const noAuth = to.meta && to.meta.noAuth
+
+  if (noAuth) {
+    // 已登录用户访问登录页 -> 跳仪表板
+    if (token) return next('/')
+    return next()
   }
+
+  if (to.meta.requiresAuth && !token) {
+    return next('/login')
+  }
+
+  next()
 })
 
 export default router

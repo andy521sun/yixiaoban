@@ -1,6 +1,11 @@
 <template>
-  <div class="app-container">
-    <!-- 侧边栏 -->
+  <!-- 登录页：无侧边栏布局 -->
+  <div v-if="isLoginPage" class="login-wrapper">
+    <router-view />
+  </div>
+  
+  <!-- 主应用：带侧边栏布局 -->
+  <div v-else class="app-container">
     <el-container class="main-container">
       <el-aside width="200px" class="sidebar">
         <div class="logo">
@@ -176,6 +181,9 @@ const userInfo = ref({
 })
 
 // 计算属性
+// 判断是否为登录页（无侧边栏）
+const isLoginPage = computed(() => route.path === '/login')
+
 const activeMenu = computed(() => {
   return route.path
 })
@@ -204,7 +212,7 @@ const handleCommand = (command) => {
   }
 }
 
-const handleLogout = () => {
+const handleLogout = async () => {
   ElMessageBox.confirm(
     '确定要退出登录吗？',
     '退出确认',
@@ -214,13 +222,10 @@ const handleLogout = () => {
       type: 'warning'
     }
   ).then(() => {
-    // 这里应该调用退出登录的API
-    ElMessage.success('退出登录成功')
-    // 在实际应用中，这里应该跳转到登录页面
-    // router.push('/login')
-  }).catch(() => {
-    // 用户取消操作
-  })
+    localStorage.removeItem('admin_token')
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  }).catch(() => {})
 }
 
 // 监听路由变化
@@ -234,6 +239,11 @@ watch(
 </script>
 
 <style scoped>
+.login-wrapper {
+  width: 100%;
+  height: 100vh;
+}
+
 .app-container {
   width: 100%;
   height: 100vh;

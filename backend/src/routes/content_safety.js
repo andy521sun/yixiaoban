@@ -64,7 +64,7 @@ function filterSensitiveWords(text, replacement = '***') {
 /// POST /api/content/report - 提交内容举报
 router.post('/report', auth.authenticateToken, async (req, res) => {
   try {
-    const { content_type, content_id, reason } = req.body;
+    const { content_type, content_id, reason, description } = req.body;
     
     if (!content_type || !content_id || !reason) {
       return res.status(400).json({ success: false, message: '缺少必要参数：content_type, content_id, reason' });
@@ -87,8 +87,8 @@ router.post('/report', auth.authenticateToken, async (req, res) => {
     }
     
     const result = await query(
-      'INSERT INTO content_reports (reporter_id, content_type, content_id, reason, status, created_at) VALUES (?, ?, ?, ?, "pending", NOW())',
-      [req.user.id, content_type, content_id, reason]
+      'INSERT INTO content_reports (reporter_id, content_type, content_id, reason, description, status, created_at) VALUES (?, ?, ?, ?, ?, "pending", NOW())',
+      [req.user.id, content_type, content_id, reason, description || null]
     );
     
     console.log(`[举报] 用户 ${req.user.id} 举报 ${content_type}#${content_id}，原因: ${reason}`);
@@ -109,7 +109,7 @@ router.get('/reports/my', auth.authenticateToken, async (req, res) => {
   try {
     const { query } = require('../db');
     const reports = await query(
-      'SELECT id, content_type, content_id, reason, action_taken as description, status, created_at FROM content_reports WHERE reporter_id = ? ORDER BY created_at DESC',
+      'SELECT id, content_type, content_id, reason, description, status, created_at, updated_at FROM content_reports WHERE reporter_id = ? ORDER BY created_at DESC',
       [req.user.id]
     );
     res.json({ success: true, data: reports });
