@@ -106,6 +106,10 @@ class _HomePageState extends State<HomePage> {
                       _buildQuickServices(),
                       const SizedBox(height: 24),
 
+                      // 在线问诊推广 Banner 2
+                      _buildConsultationBanner(),
+                      const SizedBox(height: 24),
+
                       // 推荐医院
                       _buildSectionTitle('推荐医院', action: '查看全部'),
                       const SizedBox(height: 12),
@@ -121,7 +125,7 @@ class _HomePageState extends State<HomePage> {
                       // 底部信息
                       Center(
                         child: Text(
-                          '医小伴 v1.0 · 温暖就医，专业陪伴',
+                          '医小伴 v2.0 · 在线问诊 · 专业陪诊',
                           style: TextStyle(color: Colors.grey[400], fontSize: 12),
                         ),
                       ),
@@ -159,18 +163,88 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 8),
                 Text('上海三甲医院 · 资深陪诊师', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/appointment'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text('立即预约', style: TextStyle(color: Colors.white, fontSize: 14)),
                   ),
-                  child: const Text('立即预约', style: TextStyle(color: Colors.white, fontSize: 14)),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildConsultationBanner() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/consultation/type-select'),
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF34A853), Color(0xFF66BB6A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -10,
+              bottom: -10,
+              child: Icon(Icons.chat_bubble_outline_rounded, size: 80, color: Colors.white.withValues(alpha: 0.15)),
+            ),
+            Positioned(
+              right: 30,
+              top: 10,
+              child: Icon(Icons.medical_information, size: 40, color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('在线问诊', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text('三甲医生在线 · 图文/电话/视频咨询', style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Text('立即咨询', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -194,7 +268,7 @@ class _HomePageState extends State<HomePage> {
       {'icon': Icons.local_hospital, 'label': '医院查询', 'route': ''},
       {'icon': Icons.person_search, 'label': '陪诊预约', 'route': ''},
       {'icon': Icons.receipt_long, 'label': '我的预约', 'route': '/order/list'},
-      {'icon': Icons.chat, 'label': '在线咨询', 'route': ''},
+      {'icon': Icons.chat, 'label': '在线咨询', 'route': '/consultation/type-select'},
     ];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,

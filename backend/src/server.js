@@ -192,6 +192,11 @@ app.use('/api/prescriptions', prescriptionRouter);
 const doctorFinanceRouter = require('./routes/doctor_finance');
 app.use('/api/doctor', doctorFinanceRouter);
 
+// 内容安全路由（举报 + 敏感词过滤）
+const contentSafetyRouter = require('./routes/content_safety');
+app.use('/api/content', contentSafetyRouter);
+app.use('/api/admin/content', contentSafetyRouter);
+
 // 用户认证路由
 app.post('/api/auth/register', async (req, res) => {
   try {

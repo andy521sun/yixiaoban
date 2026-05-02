@@ -10,6 +10,10 @@ import 'ui/pages/order/order_list_page.dart';
 import 'ui/pages/order/order_detail_page.dart';
 import 'ui/pages/appointment/appointment_page.dart';
 import 'ui/pages/ai/ai_consult_page.dart';
+import 'ui/pages/consultation/consultation_type_page.dart';
+import 'ui/pages/consultation/symptom_input_page.dart';
+import 'ui/pages/consultation/doctor_select_page.dart';
+import 'ui/pages/consultation/consultation_confirm_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -96,6 +100,16 @@ class MyApp extends StatelessWidget {
         return MaterialPageRoute(builder: (_) => const AppointmentPage());
       case '/ai/consult':
         return MaterialPageRoute(builder: (_) => const AiConsultPage());
+      case '/consultation/type-select':
+        return MaterialPageRoute(builder: (_) => const ConsultationTypePage());
+      case '/consultation/symptom':
+        return MaterialPageRoute(builder: (_) => const SymptomInputPage());
+      case '/consultation/doctor-select':
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => const DoctorSelectPage());
+      case '/consultation/confirm':
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => const ConsultationConfirmPage());
       default:
         return MaterialPageRoute(builder: (_) => const MainScaffold());
     }

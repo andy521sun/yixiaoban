@@ -160,4 +160,34 @@ class ApiService {
   Future<Map<String, dynamic>> aiReportAnalysis(String text, String type) async {
     return _post('/ai/report', body: {'report_text': text, 'report_type': type});
   }
+
+  // ==================== 在线问诊 ====================
+  Future<Map<String, dynamic>> createConsultation(Map<String, dynamic> data) async {
+    if (_token == null) return {'success': false, 'message': '请先登录'};
+    return _post('/consultations', body: data);
+  }
+
+  Future<List<dynamic>> getConsultations({String? status}) async {
+    if (_token == null) return [];
+    final res = await _get('/consultations', query: status != null ? {'status': status} : null);
+    if (res['success'] == true) return res['data'] ?? [];
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> getConsultationDetail(String id) async {
+    if (_token == null) return null;
+    final res = await _get('/consultations/$id');
+    return res['success'] == true ? res['data'] as Map<String, dynamic>? : null;
+  }
+
+  Future<List<dynamic>> getDoctors({String? department}) async {
+    final res = await _get('/doctors/list', query: department != null ? {'department': department} : null);
+    if (res['success'] == true) return res['data'] ?? [];
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> getDoctorDetail(String id) async {
+    final res = await _get('/doctors/$id');
+    return res['success'] == true ? res['data'] as Map<String, dynamic>? : null;
+  }
 }
