@@ -14,6 +14,8 @@ import 'ui/pages/consultation/consultation_type_page.dart';
 import 'ui/pages/consultation/symptom_input_page.dart';
 import 'ui/pages/consultation/doctor_select_page.dart';
 import 'ui/pages/consultation/consultation_confirm_page.dart';
+import 'ui/pages/consultation/consultation_chat_page.dart';
+import 'ui/pages/consultation/prescription_view_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -110,6 +112,12 @@ class MyApp extends StatelessWidget {
       case '/consultation/confirm':
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(builder: (_) => const ConsultationConfirmPage());
+      case '/consultation/chat':
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => const ConsultationChatPage());
+      case '/consultation/prescription':
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => const PrescriptionViewPage());
       default:
         return MaterialPageRoute(builder: (_) => const MainScaffold());
     }
