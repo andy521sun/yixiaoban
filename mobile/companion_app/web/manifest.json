@@ -1,11 +1,11 @@
 {
-    "name": "companion_app",
-    "short_name": "companion_app",
+    "name": "医小伴 - 陪诊师端",
+    "short_name": "医小伴",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#34A853",
+    "theme_color": "#34A853",
+    "description": "医小伴陪诊师端 - 接单、服务记录",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

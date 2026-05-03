@@ -1,11 +1,11 @@
 {
-    "name": "yixiaoban_patient",
-    "short_name": "yixiaoban_patient",
+    "name": "医小伴 - 患者端",
+    "short_name": "医小伴",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1A73E8",
+    "theme_color": "#1A73E8",
+    "description": "医小伴 - 温暖就医，在线问诊、预约陪诊",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
