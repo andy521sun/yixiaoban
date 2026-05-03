@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/config/theme_config.dart' as prefix0;
-import '../../../core/config/app_config.dart';
+import 'package:provider/provider.dart';
+import '../../../main.dart';
 
 /// AI问诊页面 - 症状咨询、报告解读、健康问答
+/// 对接后端真实 AI 接口
 class AiConsultPage extends StatefulWidget {
   const AiConsultPage({super.key});
 
@@ -38,6 +39,9 @@ class _AiConsultPageState extends State<AiConsultPage>
     '腹泻', '背痛', '皮疹', '咽痛', '耳鸣',
   ];
 
+  static const Color _primary = Color(0xFF1A73E8);
+  static const Color _accent = Color(0xFF34A853);
+
   @override
   void initState() {
     super.initState();
@@ -62,52 +66,42 @@ class _AiConsultPageState extends State<AiConsultPage>
     }
     setState(() => _consultLoading = true);
 
-    // 模拟加载 -> 显示清晰结果
-    await Future.delayed(const Duration(milliseconds: 800));
+    final appState = context.read<AppState>();
+    final res = await appState.api.aiConsultation(text);
+
     if (!mounted) return;
+    if (res['success'] == true) {
+      final data = res['data'] as Map<String, dynamic>? ?? {};
+      final suggestions = (data['suggestions'] as List?) ?? [];
+      final emergency = data['emergency'] as bool? ?? false;
+      final recommendation = data['recommendation'] as String? ?? '';
 
-    setState(() {
-      _diagnosis = _mockDiagnosis(text);
-      _consultDone = true;
-      _consultLoading = false;
-    });
-  }
+      final sb = StringBuffer();
+      sb.writeln('🤖 **AI智能诊断分析**\n');
+      sb.writeln('**您的症状描述：**');
+      sb.writeln('$text\n');
+      sb.writeln('---\n');
+      sb.writeln('**📋 建议措施：**');
+      for (final s in suggestions) {
+        sb.writeln('• $s');
+      }
+      sb.writeln();
+      if (emergency) {
+        sb.writeln('🚨 **警示：** 请立即就医！\n');
+      }
+      sb.writeln('**建议：** $recommendation\n');
+      sb.writeln('---\n');
+      sb.writeln('⚠️ *本建议由AI生成，仅供参考，不能替代专业医生诊断。如有不适请及时就医。*');
 
-  String _mockDiagnosis(String symptoms) {
-    return """🤖 **AI智能诊断分析**
-
-**您的症状描述：**
-$symptoms
-
----
-
-**1️⃣ 可能的疾病方向**
-根据您的症状描述，可能与以下情况有关：
-• 上呼吸道感染（感冒/流感）
-• 急性咽炎/扁桃体炎
-• 疲劳综合征
-
-**2️⃣ 建议检查项目**
-• 血常规检查
-• 体温测量
-• 咽喉检查
-
-**3️⃣ 是否需要立即就医**
-✅ 建议 **近期就医检查**（黄色级别）
-• 若出现高烧不退、呼吸困难请立即就医
-
-**4️⃣ 日常注意事项**
-• 多休息，保证充足睡眠
-• 多喝温水（每日2000ml以上）
-• 清淡饮食，避免辛辣刺激
-• 保持室内通风
-
-**5️⃣ 建议挂号科室**
-🏥 建议挂 **内科** 或 **全科**
-
----
-
-⚠️ *本建议由AI生成，仅供参考，不能替代专业医生诊断。如有不适请及时就医。*""";
+      setState(() {
+        _diagnosis = sb.toString();
+        _consultDone = true;
+        _consultLoading = false;
+      });
+    } else {
+      _showSnack(res['message'] as String? ?? '问诊失败');
+      setState(() => _consultLoading = false);
+    }
   }
 
   // ========== 报告解读 ==========
@@ -119,38 +113,49 @@ $symptoms
     }
     setState(() => _reportLoading = true);
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    final appState = context.read<AppState>();
+    final res = await appState.api.aiReportAnalysis(text, _reportType);
+
     if (!mounted) return;
+    if (res['success'] == true) {
+      final data = res['data'] as Map<String, dynamic>? ?? {};
+      final analysis = data['analysis'] as String? ?? '';
+      final suggestions = (data['suggestions'] as List?) ?? [];
+      final abnormal = (data['abnormal_indicators'] as List?) ?? [];
 
-    setState(() {
-      _analysis = _mockAnalysis(text);
-      _reportDone = true;
-      _reportLoading = false;
-    });
-  }
+      final sb = StringBuffer();
+      sb.writeln('📋 **报告解读结果**\n');
+      sb.writeln('**报告类型：** $_reportType\n');
+      sb.writeln('---\n');
+      sb.writeln('**📌 分析结果**\n');
+      sb.writeln('$analysis\n');
 
-  String _mockAnalysis(String reportText) {
-    return """📋 **报告解读结果**
+      if (abnormal.isNotEmpty) {
+        sb.writeln('**⚠️ 异常指标：**');
+        for (final a in abnormal) {
+          sb.writeln('• $a');
+        }
+        sb.writeln();
+      }
+      if (suggestions.isNotEmpty) {
+        sb.writeln('**💡 建议措施：**');
+        for (final s in suggestions) {
+          sb.writeln('• $s');
+        }
+        sb.writeln();
+      }
+      sb.writeln('---\n');
+      sb.writeln('⚠️ *本解读由AI生成，仅供参考，不能替代专业医生诊断。*');
 
-**报告类型：** $_reportType
-
----
-
-**📌 关键指标分析**
-以下是指标情况概览：
-• 主要指标均处于正常范围
-• 有1-2项轻微偏离参考值
-• 无重大异常发现
-
-**📖 通俗解释**
-这些指标表明您的身体状况整体良好，少数偏离可能与近期饮食或作息有关，建议复查确认。
-
-**💡 建议措施**
-• 1-2周后复查异常指标
-• 保持规律作息
-• 如有不适请及时就医
-
-⚠️ *本解读由AI生成，仅供参考，不能替代专业医生诊断。*""";
+      setState(() {
+        _analysis = sb.toString();
+        _reportDone = true;
+        _reportLoading = false;
+      });
+    } else {
+      _showSnack(res['message'] as String? ?? '解读失败');
+      setState(() => _reportLoading = false);
+    }
   }
 
   // ========== 健康问答 ==========
@@ -164,30 +169,24 @@ $symptoms
     });
     _qaCtrl.clear();
 
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
+    // 用症状咨询接口做问答（传用户问题）
+    final appState = context.read<AppState>();
+    final res = await appState.api.aiConsultation(text);
 
+    if (!mounted) return;
     setState(() {
-      _qaMessages.add({
-        'role': 'assistant',
-        'content': _mockQA(text),
-      });
+      if (res['success'] == true) {
+        final data = res['data'] as Map<String, dynamic>? ?? {};
+        final suggestions = (data['suggestions'] as List?) ?? [];
+        final answer = suggestions.isNotEmpty
+            ? suggestions.join('\n')
+            : data['analysis'] as String? ?? '未能获取回答，请稍后重试';
+        _qaMessages.add({'role': 'assistant', 'content': answer});
+      } else {
+        _qaMessages.add({'role': 'assistant', 'content': '抱歉，暂时无法回答这个问题。'});
+      }
       _qaLoading = false;
     });
-  }
-
-  String _mockQA(String question) {
-    final lowered = question.toLowerCase();
-    if (lowered.contains('感冒') || lowered.contains('发热')) {
-      return '感冒通常由病毒引起，症状包括发热、咳嗽、流鼻涕等。建议多休息、多喝水。如果体温超过38.5°C或症状持续加重，请及时就医。';
-    }
-    if (lowered.contains('饮食') || lowered.contains('吃')) {
-      return '就医前建议清淡饮食，避免空腹检查（除非要求空腹）。术后恢复期间注意补充蛋白质和维生素，避免辛辣刺激食物。';
-    }
-    if (lowered.contains('陪诊') || lowered.contains('服务')) {
-      return '医小伴提供专业陪诊服务，包括小时陪诊（80元/小时）、全天陪诊（500元/天）和定制服务。陪诊师均经过严格审核和培训，可全程陪同您就诊。';
-    }
-    return '关于「$question」这个问题，建议您咨询专业医生获取准确建议。如果您有就医需求，可以在医小伴上预约陪诊服务，陪诊师会全程协助您。';
   }
 
   void _addSymptomTag(String s) {
@@ -216,8 +215,8 @@ $symptoms
         title: const Text('AI 智能问诊'),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppConfig.primaryColor,
-          labelColor: AppConfig.primaryColor,
+          indicatorColor: _primary,
+          labelColor: _primary,
           unselectedLabelColor: Colors.grey,
           tabs: const [
             Tab(icon: Icon(Icons.healing), text: '症状咨询'),
@@ -243,14 +242,13 @@ $symptoms
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 头部提示
           Card(
-            color: AppConfig.primaryColor.withValues(alpha: 0.05),
+            color: _primary.withValues(alpha: 0.05),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: AppConfig.primaryColor, size: 20),
+                  const Icon(Icons.info_outline, color: _primary, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -263,8 +261,6 @@ $symptoms
             ),
           ),
           const SizedBox(height: 16),
-
-          // 常用症状标签
           const Text('快速选择症状', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 8),
           Wrap(
@@ -276,8 +272,6 @@ $symptoms
             )).toList(),
           ),
           const SizedBox(height: 16),
-
-          // 症状输入
           TextField(
             controller: _symptomsCtrl,
             maxLines: 5,
@@ -288,14 +282,12 @@ $symptoms
             ),
           ),
           const SizedBox(height: 16),
-
-          // 提交按钮
           SizedBox(
             width: double.infinity, height: 48,
             child: ElevatedButton(
               onPressed: _consultLoading ? null : _submitConsultation,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppConfig.primaryColor,
+                backgroundColor: _primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: _consultLoading
@@ -303,8 +295,6 @@ $symptoms
                   : const Text('开始诊断分析', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
             ),
           ),
-
-          // 诊断结果
           if (_consultDone && _diagnosis != null) ...[
             const SizedBox(height: 20),
             Container(
@@ -313,7 +303,7 @@ $symptoms
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppConfig.primaryColor.withValues(alpha: 0.3)),
+                border: Border.all(color: _primary.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,10 +313,10 @@ $symptoms
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppConfig.primaryColor.withValues(alpha: 0.1),
+                          color: _primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text('诊断结果', style: TextStyle(color: AppConfig.primaryColor, fontWeight: FontWeight.w600, fontSize: 13)),
+                        child: const Text('诊断结果', style: TextStyle(color: _primary, fontWeight: FontWeight.w600, fontSize: 13)),
                       ),
                       const Spacer(),
                       IconButton(
@@ -342,12 +332,12 @@ $symptoms
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.pushNamed(context, '/appointment'),
-                      icon: const Icon(Icons.calendar_today, size: 18),
-                      label: const Text('预约陪诊师'),
+                      onPressed: () => Navigator.pushNamed(context, '/consultation/type-select'),
+                      icon: const Icon(Icons.chat, size: 18),
+                      label: const Text('找医生在线问诊'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppConfig.accentColor,
-                        side: const BorderSide(color: AppConfig.accentColor),
+                        foregroundColor: _accent,
+                        side: const BorderSide(color: _accent),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -369,12 +359,12 @@ $symptoms
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Card(
-            color: AppConfig.accentColor.withValues(alpha: 0.05),
+            color: _accent.withValues(alpha: 0.05),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: AppConfig.accentColor, size: 20),
+                  const Icon(Icons.info_outline, color: _accent, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -387,8 +377,6 @@ $symptoms
             ),
           ),
           const SizedBox(height: 16),
-
-          // 报告类型选择
           const Text('报告类型', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
@@ -401,8 +389,6 @@ $symptoms
             onChanged: (v) => setState(() => _reportType = v ?? '化验单'),
           ),
           const SizedBox(height: 16),
-
-          // 报告内容输入
           TextField(
             controller: _reportCtrl,
             maxLines: 6,
@@ -413,13 +399,12 @@ $symptoms
             ),
           ),
           const SizedBox(height: 16),
-
           SizedBox(
             width: double.infinity, height: 48,
             child: ElevatedButton(
               onPressed: _reportLoading ? null : _submitReport,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppConfig.accentColor,
+                backgroundColor: _accent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: _reportLoading
@@ -427,7 +412,6 @@ $symptoms
                   : const Text('开始解读报告', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
             ),
           ),
-
           if (_reportDone && _analysis != null) ...[
             const SizedBox(height: 20),
             Container(
@@ -436,7 +420,7 @@ $symptoms
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppConfig.accentColor.withValues(alpha: 0.3)),
+                border: Border.all(color: _accent.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,10 +430,10 @@ $symptoms
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppConfig.accentColor.withValues(alpha: 0.1),
+                          color: _accent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text('解读结果', style: TextStyle(color: AppConfig.accentColor, fontWeight: FontWeight.w600, fontSize: 13)),
+                        child: const Text('解读结果', style: TextStyle(color: _accent, fontWeight: FontWeight.w600, fontSize: 13)),
                       ),
                       const Spacer(),
                       IconButton(
@@ -473,7 +457,6 @@ $symptoms
   Widget _buildQATab() {
     return Column(
       children: [
-        // 消息列表
         Expanded(
           child: _qaMessages.isEmpty
               ? Center(
@@ -517,10 +500,10 @@ $symptoms
                             Container(
                               width: 32, height: 32,
                               decoration: BoxDecoration(
-                                color: AppConfig.primaryColor.withValues(alpha: 0.1),
+                                color: _primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.auto_awesome, color: AppConfig.primaryColor, size: 18),
+                              child: const Icon(Icons.auto_awesome, color: _primary, size: 18),
                             ),
                             const SizedBox(width: 8),
                           ],
@@ -528,7 +511,7 @@ $symptoms
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: isUser ? AppConfig.primaryColor : Colors.white,
+                                color: isUser ? _primary : Colors.white,
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(12),
                                   topRight: const Radius.circular(12),
@@ -542,7 +525,7 @@ $symptoms
                               child: Text(
                                 msg['content'] ?? '',
                                 style: TextStyle(
-                                  color: isUser ? Colors.white : prefix0.ThemeConfig.textPrimaryColor,
+                                  color: isUser ? Colors.white : Colors.black87,
                                   fontSize: 14, height: 1.5,
                                 ),
                               ),
@@ -553,10 +536,10 @@ $symptoms
                             Container(
                               width: 32, height: 32,
                               decoration: BoxDecoration(
-                                color: AppConfig.accentColor.withValues(alpha: 0.1),
+                                color: _accent.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.person, color: AppConfig.accentColor, size: 18),
+                              child: const Icon(Icons.person, color: _accent, size: 18),
                             ),
                           ],
                         ],
@@ -565,8 +548,6 @@ $symptoms
                   },
                 ),
         ),
-
-        // 快捷问题
         if (_qaMessages.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -581,8 +562,6 @@ $symptoms
               )).toList(),
             ),
           ),
-
-        // 输入栏
         Container(
           padding: EdgeInsets.only(left: 12, right: 8, top: 8, bottom: MediaQuery.of(context).padding.bottom + 8),
           decoration: BoxDecoration(
@@ -614,7 +593,7 @@ $symptoms
               IconButton(
                 onPressed: _qaLoading ? null : _sendQA,
                 icon: const Icon(Icons.send_rounded),
-                color: AppConfig.primaryColor,
+                color: _primary,
               ),
             ],
           ),
