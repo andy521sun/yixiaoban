@@ -61,7 +61,13 @@
           <el-descriptions-item label="现病史" :span="2" v-if="currentRow.present_illness">{{ currentRow.present_illness }}</el-descriptions-item>
           <el-descriptions-item label="既往史" :span="2" v-if="currentRow.past_history">{{ currentRow.past_history }}</el-descriptions-item>
           <el-descriptions-item label="诊断" :span="2" v-if="currentRow.diagnosis">{{ currentRow.diagnosis }}</el-descriptions-item>
-          <el-descriptions-item label="评价" :span="2" v-if="currentRow.rating">评分: {{ currentRow.rating }}/5</el-descriptions-item>
+          <el-descriptions-item label="评价" :span="2" v-if="currentRow.patient_rating">
+            评分: {{ currentRow.patient_rating }}/5
+            <span v-if="currentRow.patient_review"> · {{ currentRow.patient_review }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="处方" :span="2" v-if="currentRow.has_prescription">
+            <el-button type="primary" size="small" @click="showPrescription(currentRow.id)">查看处方</el-button>
+          </el-descriptions-item>
           <el-descriptions-item label="创建时间" :span="2">{{ currentRow.created_at }}</el-descriptions-item>
         </el-descriptions>
       </template>
@@ -72,6 +78,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '../api/index.js'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const loading = ref(false)
 const list = ref([])
@@ -113,6 +120,30 @@ async function loadData() {
 function showDetail(row) {
   currentRow.value = row
   detailVisible.value = true
+}
+
+async function showPrescription(consultationId) {
+  try {
+    const res = await api.get(`/consultations/${consultationId}/prescription`)
+    if (res.success && res.data) {
+      const p = res.data
+      const drugs = (p.items || []).map(d => `${d.drug_name} ${d.specification || ''} ${d.dosage || ''} ${d.frequency || ''}`).join('\n')
+      ElMessageBox.alert(
+        `<div style="max-height:400px;overflow-y:auto">
+          <p><b>诊断：</b>${p.diagnosis || '-'}</p>
+          <p><b>嘱咐：</b>${p.notes || '-'}</p>
+          <hr style="margin:12px 0">
+          <p><b>药品清单：</b></p>
+          <pre style="background:#f5f7fa;padding:10px;border-radius:6px;font-size:13px;line-height:1.6">${drugs || '无'}</pre>
+        </div>`,
+        '处方详情', { dangerouslyUseHTMLString: true, confirmButtonText: '关闭' }
+      )
+    } else {
+      ElMessage.info('暂无处方')
+    }
+  } catch (e) {
+    ElMessage.error('加载处方失败')
+  }
 }
 
 function statusType(status) {
