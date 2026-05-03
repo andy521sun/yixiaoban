@@ -2199,4 +2199,93 @@ router.get('/prescriptions/:id', async (req, res) => {
   }
 });
 
+// ========== 陪诊师管理 ==========
+/**
+ * @api {get} /api/admin/companions 陪诊师列表
+ */
+router.get('/companions', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, status, is_certified } = req.query;
+    const offset = (page - 1) * limit;
+
+    let where = '';
+    const params = [];
+
+    if (search) {
+      where += ' AND (c.real_name LIKE ? OR u.phone LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (status) {
+      where += ' AND u.status = ?';
+      params.push(status);
+    }
+    if (is_certified !== undefined && is_certified !== '') {
+      where += ' AND c.is_certified = ?';
+      params.push(is_certified === '1' || is_certified === 'true' ? 1 : 0);
+    }
+
+    const companions = await query(`
+      SELECT 
+        c.*,
+        u.name,
+        u.phone,
+        u.avatar_url,
+        u.status as user_status,
+        u.created_at as user_created_at
+      FROM companions c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE 1=1 ${where}
+      ORDER BY c.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [...params, parseInt(limit), offset]);
+
+    const countResult = await query(`
+      SELECT COUNT(*) as total FROM companions c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE 1=1 ${where}
+    `, params);
+
+    res.json({
+      success: true,
+      data: companions,
+      pagination: {
+        total: countResult[0]?.total || 0,
+        page: parseInt(page),
+        page_size: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @api {post} /api/admin/companions/:id/certify 审核陪诊师认证
+ */
+router.post('/companions/:id/certify', async (req, res) => {
+  try {
+    const { action, reason } = req.body; // action: 'approve' | 'reject'
+    const companionId = req.params.id;
+
+    const companions = await query('SELECT * FROM companions WHERE id = ?', [companionId]);
+    if (!companions.length) {
+      return res.status(404).json({ success: false, message: '陪诊师不存在' });
+    }
+
+    const isCertified = action === 'approve' ? 1 : 0;
+    await query('UPDATE companions SET is_certified = ?, updated_at = NOW() WHERE id = ?', [isCertified, companionId]);
+
+    // 记录操作日志
+    const adminId = req.user?.id || 'system';
+    await query(
+      'INSERT INTO operation_logs (user_id, user_type, operation_type, target_type, target_id, request_url, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [adminId, 'admin', 'companion_certify', 'companion', companionId, `/api/admin/companions/${companionId}/certify`]
+    );
+
+    res.json({ success: true, data: { is_certified: isCertified } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
