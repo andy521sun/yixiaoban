@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../main.dart';
-import '../../../core/services/api_service.dart';
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,9 +10,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final ApiService _api = ApiService();
-  List<dynamic> _hospitals = [];
-  List<dynamic> _companions = [];
   bool _loading = true;
   String? _error;
   int _unreadCount = 0;
@@ -22,49 +17,36 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadAll();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadUnreadCount();
-  }
-
-  Future<void> _loadUnreadCount() async {
-    final appState = context.read<AppState>();
-    if (!appState.loggedIn) return;
-    final res = await appState.api.getNotifications(limit: 20, unreadOnly: true);
+  Future<void> _loadAll() async {
     if (!mounted) return;
-    if (res['success'] == true) {
-      final data = res['data'] as Map<String, dynamic>? ?? {};
-      final notifications = (data['notifications'] as List?) ?? [];
-      setState(() => _unreadCount = notifications.length);
-    }
-  }
+    setState(() => _loading = true);
 
-  Future<void> _loadData() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final results = await Future.wait([
-        _api.getHospitals(),
-        _api.getCompanions(),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _hospitals = results[0];
-        _companions = results[1];
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() { _error = '加载失败: $e'; _loading = false; });
+    final appState = context.read<AppState>();
+
+    // 加载首页缓存数据
+    await appState.loadHomeData();
+
+    // 加载未读通知数
+    if (appState.loggedIn) {
+      final res = await appState.api.getNotifications(limit: 20, unreadOnly: true);
+      if (mounted && res['success'] == true) {
+        final data = res['data'] as Map<String, dynamic>? ?? {};
+        final notifications = (data['notifications'] as List?) ?? [];
+        _unreadCount = notifications.length;
+      }
     }
+
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
+    final _hospitals = appState.cachedHospitals;
+    final _companions = appState.cachedCompanions;
 
     return Scaffold(
       appBar: AppBar(
@@ -120,7 +102,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadData,
+        onRefresh: _loadAll,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
@@ -132,7 +114,7 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(height: 16),
                         Text(_error!, style: TextStyle(color: Colors.grey[600])),
                         const SizedBox(height: 16),
-                        ElevatedButton(onPressed: _loadData, child: const Text('重试')),
+                        ElevatedButton(onPressed: _loadAll, child: const Text('重试')),
                       ],
                     ),
                   )

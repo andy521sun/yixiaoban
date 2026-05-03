@@ -134,15 +134,27 @@ class MyApp extends StatelessWidget {
 class AppState extends ChangeNotifier {
   final ApiService api = ApiService();
   final WebSocketService ws = WebSocketService();
+
+  // 认证
   bool _loggedIn = false;
   String _token = '';
   String _userName = '';
   String _userPhone = '';
 
+  // 缓存
+  List<dynamic> _cachedHospitals = [];
+  List<dynamic> _cachedCompanions = [];
+  DateTime? _lastHomeRefresh;
+  static const Duration _cacheTtl = Duration(minutes: 10);
+
   bool get loggedIn => _loggedIn;
   String get token => _token;
   String get userName => _userName;
   String get userPhone => _userPhone;
+  List<dynamic> get cachedHospitals => _cachedHospitals;
+  List<dynamic> get cachedCompanions => _cachedCompanions;
+  bool get cacheValid => _lastHomeRefresh != null &&
+      DateTime.now().difference(_lastHomeRefresh!) < _cacheTtl;
 
   void setLoggedIn(bool v) {
     _loggedIn = v;
@@ -158,11 +170,33 @@ class AppState extends ChangeNotifier {
   void setUserName(String n) { _userName = n; notifyListeners(); }
   void setUserPhone(String p) => _userPhone = p;
 
+  /// 加载首页数据（带缓存）
+  Future<void> loadHomeData() async {
+    if (cacheValid) return; // 缓存有效，跳过
+    try {
+      final results = await Future.wait([
+        api.getHospitals(),
+        api.getCompanions(),
+      ]);
+      _cachedHospitals = results[0];
+      _cachedCompanions = results[1];
+      _lastHomeRefresh = DateTime.now();
+      notifyListeners();
+    } catch (e) {
+      // 缓存失败不影响使用
+    }
+  }
+
+  void invalidateCache() {
+    _lastHomeRefresh = null;
+  }
+
   void logout() {
     ws.disconnect();
     _loggedIn = false;
     _token = '';
     api.setToken(null);
+    invalidateCache();
     notifyListeners();
   }
 
