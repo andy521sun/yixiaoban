@@ -174,4 +174,37 @@ router.get('/detail/:id', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/prescriptions/my - 医生获取个人处方列表
+ */
+router.get('/my', async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20 } = req.query;
+    const offset = (page - 1) * pageSize;
+
+    const prescriptions = await query(`
+      SELECT p.*, u.name as patient_name
+      FROM prescriptions p
+      JOIN users u ON u.id = p.patient_id
+      WHERE p.doctor_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [req.user.id, parseInt(pageSize), offset]);
+
+    const [{ total }] = await query(
+      'SELECT COUNT(*) as total FROM prescriptions WHERE doctor_id = ?',
+      [req.user.id]
+    );
+
+    res.json({
+      success: true,
+      data: prescriptions,
+      total,
+    });
+  } catch (error) {
+    console.error('获取处方列表失败:', error);
+    res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
 module.exports = router;

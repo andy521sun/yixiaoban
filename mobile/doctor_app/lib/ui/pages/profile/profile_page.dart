@@ -78,6 +78,13 @@ class ProfilePage extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: const Text('处方记录'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.pushNamed(context, '/prescriptions'),
+                ),
+                const Divider(height: 0, indent: 16),
+                ListTile(
                   leading: const Icon(Icons.price_change_outlined),
                   title: const Text('服务价格设置'),
                   trailing: const Icon(Icons.chevron_right),

@@ -9,6 +9,8 @@ import 'ui/pages/finance/finance_page.dart';
 import 'ui/pages/profile/service_pricing_page.dart';
 import 'ui/pages/consultation/consultation_chat_page_doctor.dart';
 import 'ui/pages/notifications/notifications_page.dart';
+import 'ui/pages/prescriptions/prescriptions_page.dart';
+import 'ui/pages/prescriptions/prescription_detail_page.dart';
 
 void main() {
   runApp(const DoctorApp());
@@ -83,6 +85,10 @@ class DoctorApp extends StatelessWidget {
               );
             case '/notifications':
               return MaterialPageRoute(builder: (_) => const DoctorNotificationsPage());
+            case '/prescriptions':
+              return MaterialPageRoute(builder: (_) => const DoctorPrescriptionsPage());
+            case '/prescription/detail':
+              return MaterialPageRoute(builder: (_) => const DoctorPrescriptionDetailPage());
             default:
               return MaterialPageRoute(builder: (_) => const DoctorMainScaffold());
           }

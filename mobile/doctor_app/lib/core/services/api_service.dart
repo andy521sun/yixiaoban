@@ -99,6 +99,16 @@ class DoctorApiService {
     return _post('/consultations/$consultationId/prescription', body: data);
   }
 
+  Future<Map<String, dynamic>> getMyPrescriptions({int page = 1, int pageSize = 20}) async {
+    return _get('/prescriptions/my', query: {'page': '$page', 'page_size': '$pageSize'});
+  }
+
+  Future<Map<String, dynamic>?> getPrescriptionDetail(String id) async {
+    final res = await _get('/prescriptions/detail/$id');
+    if (res['prescription'] != null) return res as Map<String, dynamic>?;
+    return null;
+  }
+
   // ===== 消息 =====
   Future<Map<String, dynamic>> sendMessage(String consultationId, Map<String, dynamic> data) {
     return _post('/consultations/$consultationId/messages', body: data);
