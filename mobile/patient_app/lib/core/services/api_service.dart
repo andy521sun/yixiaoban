@@ -203,4 +203,19 @@ class ApiService {
     if (res['success'] == true) return res['data'] ?? [];
     return [];
   }
+
+  // ==================== 通知 ====================
+  Future<Map<String, dynamic>> getNotifications({int page = 1, int limit = 20, bool unreadOnly = false}) async {
+    if (_token == null) return {'success': false, 'data': {'notifications': [], 'pagination': {'total': 0}}};
+    return _get('/realtime/notifications', query: {
+      'page': page.toString(),
+      'limit': limit.toString(),
+      if (unreadOnly) 'unread_only': 'true',
+    });
+  }
+
+  Future<Map<String, dynamic>> markNotificationRead({String? notificationId}) async {
+    if (_token == null) return {'success': false};
+    return _post('/realtime/notifications/mark-read', body: notificationId != null ? {'notification_id': notificationId} : {});
+  }
 }

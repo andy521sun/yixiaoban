@@ -17,11 +17,30 @@ class _HomePageState extends State<HomePage> {
   List<dynamic> _companions = [];
   bool _loading = true;
   String? _error;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final appState = context.read<AppState>();
+    if (!appState.loggedIn) return;
+    final res = await appState.api.getNotifications(limit: 20, unreadOnly: true);
+    if (!mounted) return;
+    if (res['success'] == true) {
+      final data = res['data'] as Map<String, dynamic>? ?? {};
+      final notifications = (data['notifications'] as List?) ?? [];
+      setState(() => _unreadCount = notifications.length);
+    }
   }
 
   Future<void> _loadData() async {
@@ -51,6 +70,30 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('医小伴', style: TextStyle(fontWeight: FontWeight.w600)),
         actions: [
+          // 通知入口
+          IconButton(
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (_unreadCount > 0)
+                  Positioned(
+                    right: 0, top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFDB4437),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text('$_unreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: '通知',
+            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+          ),
           // AI问诊入口
           IconButton(
             icon: const Icon(Icons.auto_awesome, color: Color(0xFF34A853)),

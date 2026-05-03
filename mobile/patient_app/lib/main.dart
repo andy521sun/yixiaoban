@@ -18,6 +18,7 @@ import 'ui/pages/consultation/consultation_confirm_page.dart';
 import 'ui/pages/consultation/consultation_chat_page.dart';
 import 'ui/pages/consultation/prescription_view_page.dart';
 import 'ui/pages/consultation/my_consultations_page.dart';
+import 'ui/pages/notifications/notifications_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -122,6 +123,8 @@ class MyApp extends StatelessWidget {
         return MaterialPageRoute(builder: (_) => const PrescriptionViewPage());
       case '/consultation/my-list':
         return MaterialPageRoute(builder: (_) => const MyConsultationsPage());
+      case '/notifications':
+        return MaterialPageRoute(builder: (_) => const NotificationsPage());
       default:
         return MaterialPageRoute(builder: (_) => const MainScaffold());
     }
