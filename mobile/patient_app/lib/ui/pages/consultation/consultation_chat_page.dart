@@ -1,12 +1,11 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import '../../../main.dart';
-import '../../../core/services/api_service.dart';
 
-/// 问诊聊天室 — 患者与医生实时对话，集成 WebSocket 推送
+/// 问诊聊天室 — 患者与医生实时对话，支持 WebSocket 实时推送 + HTTP 兜底
 class ConsultationChatPage extends StatefulWidget {
   const ConsultationChatPage({super.key});
 
@@ -18,13 +17,14 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
-  
+
   String _consultationId = '';
   Map<String, dynamic>? _doctor;
   Map<String, dynamic>? _consultation;
   bool _loading = true;
   bool _submitting = false;
-  Timer? _pollTimer;
+  StreamSubscription<Map<String, dynamic>>? _wsSubscription;
+  bool _wsConnected = false;
 
   @override
   void initState() {
@@ -35,6 +35,7 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
         _consultationId = args['consultation_id'] as String? ?? '';
         _doctor = args['doctor'] as Map<String, dynamic>?;
         _loadConsultation();
+        _listenWs();
       }
     });
   }
@@ -43,16 +44,43 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
-    _pollTimer?.cancel();
+    _wsSubscription?.cancel();
     super.dispose();
+  }
+
+  /// 监听 WebSocket 实时新消息
+  void _listenWs() {
+    final appState = context.read<AppState>();
+    _wsConnected = appState.ws.isConnected;
+    _wsSubscription = appState.ws.messages.listen((msg) {
+      if (msg['type'] == 'consultation_message') {
+        final data = msg['data'] as Map<String, dynamic>?;
+        if (data != null) {
+          final msgConsultId = data['consultation_id']?.toString() ?? '';
+          if (msgConsultId == _consultationId) {
+            if (mounted) {
+              setState(() {
+                _messages.add(_ChatMessage.fromApi(data));
+              });
+              _scrollToBottom();
+            }
+          }
+        }
+      }
+    });
+
+    // 监听 WS 连接状态
+    appState.ws.connectionState.listen((connected) {
+      if (mounted) setState(() => _wsConnected = connected);
+    });
   }
 
   Future<void> _loadConsultation() async {
     if (_consultationId.isEmpty) return;
-    
+
     final appState = context.read<AppState>();
     final res = await appState.api.getConsultationDetail(_consultationId);
-    
+
     if (!mounted) return;
     if (res != null) {
       setState(() {
@@ -66,31 +94,23 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
   }
 
   Future<void> _loadMessages() async {
+    if (!mounted) return;
     final appState = context.read<AppState>();
-    final token = appState.token;
-    if (token.isEmpty) return;
+    final data = await appState.api.getConsultationDetail(_consultationId);
+    if (data == null || !mounted) return;
 
-    try {
-      final uri = Uri.parse('/api/consultations/$_consultationId/messages');
-      final res = await http.get(uri, headers: {
-        'Authorization': 'Bearer $token',
-      }).timeout(const Duration(seconds: 10));
-
-      final data = jsonDecode(res.body);
-      final messages = data['messages'] as List? ?? [];
-      
-      if (!mounted) return;
-      setState(() {
-        _messages.clear();
-        for (final m in messages) {
-          _messages.add(_ChatMessage.fromApi(m));
-        }
-      });
-      
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    } catch (e) {
-      debugPrint('加载消息失败: $e');
-    }
+    final msgs = data['messages'] as List? ?? [];
+    final status = data['status'] as String? ?? '';
+    setState(() {
+      _messages.clear();
+      for (final m in msgs) {
+        _messages.add(_ChatMessage.fromApi(m as Map<String, dynamic>));
+      }
+      _consultation = data;
+      if (!_loading) _consultation?['status'] = status;
+      _loading = false;
+    });
+    _scrollToBottom();
   }
 
   Future<void> _sendMessage(String content) async {
@@ -116,8 +136,31 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
     _scrollToBottom();
 
     try {
+      final res = await appState.api.getConsultationDetail(_consultationId);
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // 直接用 ApiService 发消息
+      final state = context.read<AppState>();
+      await state.api.createConsultation({'dummy': true}); // 实际用 http 发
+
+      // 用 http 直接发
+      await _httpSendMessage(content);
+    } catch (e) {
+      debugPrint('发送消息失败: $e');
+    }
+
+    if (mounted) setState(() => _submitting = false);
+  }
+
+  Future<void> _httpSendMessage(String content) async {
+    final appState = context.read<AppState>();
+    final token = appState.token;
+    if (token.isEmpty) return;
+
+    try {
+      final uri = Uri.parse('/api/consultations/$_consultationId/messages');
       final res = await http.post(
-        Uri.parse('/api/consultations/$_consultationId/messages'),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -130,14 +173,14 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
 
       final data = jsonDecode(res.body);
       if (data['success'] == true) {
-        // 刷新消息列表
+        // 不重复加载，等 WebSocket 推送回消息
+      } else {
         _loadMessages();
       }
     } catch (e) {
-      debugPrint('发送消息失败: $e');
+      debugPrint('HTTP发送消息失败: $e');
+      _loadMessages(); // 兜底刷新
     }
-
-    if (mounted) setState(() => _submitting = false);
   }
 
   void _scrollToBottom() {
@@ -166,7 +209,20 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(doctorName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Row(
+              children: [
+                Text(doctorName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                if (_wsConnected)
+                  Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    width: 8, height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF34A853),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
             if (doctorTitle.isNotEmpty)
               Text('$doctorTitle · $doctorDept',
                 style: TextStyle(fontSize: 11, color: Colors.grey[600]),
@@ -174,7 +230,6 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
           ],
         ),
         actions: [
-          // 处方入口
           IconButton(
             icon: const Icon(Icons.medical_information_outlined),
             tooltip: '查看处方',
@@ -204,7 +259,7 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
                 ],
               ),
             ),
-          
+
           // 消息列表
           Expanded(
             child: _loading
@@ -336,7 +391,6 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              // 图片上传按钮
               Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -351,7 +405,6 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
                 ),
               ),
               const SizedBox(width: 4),
-              // 文本输入
               Expanded(
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 100),
@@ -369,12 +422,12 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
+                    onChanged: (_) => setState(() {}),
                     onSubmitted: (v) => _sendMessage(v),
                   ),
                 ),
               ),
               const SizedBox(width: 4),
-              // 发送按钮
               Material(
                 color: _textController.text.isNotEmpty
                     ? const Color(0xFF1A73E8)
@@ -430,7 +483,7 @@ class _ChatMessage {
   });
 
   factory _ChatMessage.fromApi(Map<String, dynamic> data) {
-    final isSent = data['sender_id'] == 'patient' || data['role'] == 'patient';
+    final isSent = data['sender_role'] == 'patient' || data['role'] == 'patient';
     return _ChatMessage(
       id: data['id']?.toString() ?? '',
       senderId: data['sender_id']?.toString() ?? '',
@@ -445,3 +498,4 @@ class _ChatMessage {
     );
   }
 }
+

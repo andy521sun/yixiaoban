@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../services/websocket_service.dart';
 
 /// 医生端全局状态
 class DoctorAppState extends ChangeNotifier {
   final DoctorApiService api = DoctorApiService();
+  final WebSocketService ws = WebSocketService();
 
   bool _loggedIn = false;
   String _token = '';
@@ -23,7 +25,11 @@ class DoctorAppState extends ChangeNotifier {
   bool get isCertified => _certStatus == 'approved';
 
   void setLoggedIn(bool v) { _loggedIn = v; notifyListeners(); }
-  void setToken(String t) { _token = t; api.setToken(t); }
+  void setToken(String t) {
+    _token = t;
+    api.setToken(t);
+    ws.connect(t);
+  }
   void setDoctorName(String n) { _doctorName = n; notifyListeners(); }
   void setDoctorInfo({String? name, String? title, String? department, String? hospital}) {
     if (name != null) _doctorName = name;
@@ -35,6 +41,7 @@ class DoctorAppState extends ChangeNotifier {
   void setCertStatus(String s) { _certStatus = s; notifyListeners(); }
 
   void logout() {
+    ws.disconnect();
     _loggedIn = false;
     _token = '';
     _doctorName = '';
@@ -44,5 +51,11 @@ class DoctorAppState extends ChangeNotifier {
     _certStatus = '';
     api.setToken(null);
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    ws.dispose();
+    super.dispose();
   }
 }

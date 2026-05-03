@@ -1,10 +1,10 @@
-import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import 'package:doctor_app/core/providers/doctor_state.dart';
 
 /// 医生端问诊聊天室 — 接诊、聊天、完成问诊、开处方
+/// 支持 WebSocket 实时推送
 class DoctorConsultationChatPage extends StatefulWidget {
   final String consultationId;
 
@@ -21,6 +21,7 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
   Map<String, dynamic>? _consultation;
   bool _loading = true;
   bool _submitting = false;
+  StreamSubscription<Map<String, dynamic>>? _wsSubscription;
 
   // 诊断和处方
   final _diagnosisController = TextEditingController();
@@ -31,6 +32,7 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
   void initState() {
     super.initState();
     _loadDetail();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _listenWs());
   }
 
   @override
@@ -42,7 +44,27 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
     for (final d in _drugControllers) {
       d.values.forEach((c) => c.dispose());
     }
+    _wsSubscription?.cancel();
     super.dispose();
+  }
+
+  /// 监听 WebSocket 实时新消息
+  void _listenWs() {
+    final state = context.read<DoctorAppState>();
+    _wsSubscription = state.ws.messages.listen((msg) {
+      if (msg['type'] == 'consultation_message') {
+        final data = msg['data'] as Map<String, dynamic>?;
+        if (data != null) {
+          final msgConsultId = data['consultation_id']?.toString() ?? '';
+          if (msgConsultId == widget.consultationId) {
+            if (mounted) {
+              setState(() => _messages.add(data));
+              _scrollToBottom();
+            }
+          }
+        }
+      }
+    });
   }
 
   Future<void> _loadDetail() async {
@@ -53,6 +75,7 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
     if (!mounted) return;
     setState(() {
       _consultation = detail;
+      _messages.clear();
       _messages.addAll(msgs.cast<Map<String, dynamic>>());
       _loading = false;
     });
@@ -71,6 +94,8 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
     });
 
     if (res['success'] == true) {
+      // 不重复加载，等 WebSocket 推回来
+    } else {
       _loadDetail();
     }
     if (mounted) setState(() => _submitting = false);
@@ -179,6 +204,7 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
                                 ),
                             ],
                           ),
+                          const SizedBox(height: 8),
                           TextField(controller: ctrls['name']!, decoration: const InputDecoration(labelText: '药品名称 *', isDense: true)),
                           TextField(controller: ctrls['spec']!, decoration: const InputDecoration(labelText: '规格', isDense: true)),
                           Row(
@@ -233,7 +259,6 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
 
     final state = context.read<DoctorAppState>();
 
-    // 先完成问诊
     final completeRes = await state.api.completeConsultation(widget.consultationId, {
       'diagnosis': diagnosis,
       'notes': _notesController.text.trim(),
@@ -244,7 +269,6 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
       return;
     }
 
-    // 有药品则创建处方
     final drugs = _drugControllers
         .map((d) => {
           'drug_name': d['name']?.text.trim() ?? '',
@@ -254,10 +278,10 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
           'duration_days': int.tryParse(d['days']?.text.trim() ?? '') ?? 0,
           'total_quantity': int.tryParse(d['quantity']?.text.trim() ?? '') ?? 0,
         })
-        .where((d) => (d['drug_name'] as String?)?.isNotEmpty == true ?? false)
+        .where((d) => (d['drug_name'] as String).isNotEmpty)
         .toList();
 
-    if ((drugs?.isNotEmpty == true) ?? false) {
+    if (drugs.isNotEmpty) {
       await state.api.createPrescription(widget.consultationId, {
         'diagnosis': diagnosis,
         'notes': _notesController.text.trim(),
@@ -266,8 +290,8 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
     }
 
     if (mounted) {
-      Navigator.pop(context); // 关闭 dialog
-      Navigator.pop(context); // 返回列表
+      Navigator.pop(context);
+      Navigator.pop(context);
     }
   }
 
@@ -295,7 +319,6 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
       ),
       body: Column(
         children: [
-          // 患者病情摘要
           if (_consultation?['main_complaint'] != null)
             Container(
               width: double.infinity,
@@ -334,7 +357,7 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
                         itemCount: _messages.length,
                         itemBuilder: (_, i) {
                           final m = _messages[i];
-                          final isMe = (m['role'] as String? ?? '') == 'doctor' || (m['sender_id'] as String? ?? '') == 'doctor';
+                          final isMe = (m['sender_role'] as String? ?? '') == 'doctor' || (m['role'] as String? ?? '') == 'doctor';
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Row(
@@ -413,6 +436,7 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
+                    onChanged: (_) => setState(() {}),
                     onSubmitted: (v) => _sendMessage(v),
                   ),
                 ),

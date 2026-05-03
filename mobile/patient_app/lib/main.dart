@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/services/api_service.dart';
+import 'core/services/websocket_service.dart';
 import 'ui/pages/main_scaffold.dart';
 
 import 'ui/pages/auth/login_page.dart';
@@ -126,6 +127,7 @@ class MyApp extends StatelessWidget {
 
 class AppState extends ChangeNotifier {
   final ApiService api = ApiService();
+  final WebSocketService ws = WebSocketService();
   bool _loggedIn = false;
   String _token = '';
   String _userName = '';
@@ -141,7 +143,26 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setToken(String t) => _token = t;
+  void setToken(String t) {
+    _token = t;
+    api.setToken(t);
+    ws.connect(t);
+  }
+
   void setUserName(String n) { _userName = n; notifyListeners(); }
   void setUserPhone(String p) => _userPhone = p;
+
+  void logout() {
+    ws.disconnect();
+    _loggedIn = false;
+    _token = '';
+    api.setToken(null);
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    ws.dispose();
+    super.dispose();
+  }
 }
