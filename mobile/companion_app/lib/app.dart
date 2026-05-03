@@ -5,6 +5,7 @@ import 'core/config/theme_config.dart';
 import 'ui/pages/auth/login_page.dart';
 import 'ui/pages/home/companion_home_page.dart';
 import 'ui/pages/order/order_detail_page.dart';
+import 'ui/pages/notifications/notifications_page.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -40,6 +41,10 @@ class App extends StatelessWidget {
               }
               return MaterialPageRoute(
                 builder: (_) => const CompanionHomePage(),
+              );
+            case '/notifications':
+              return MaterialPageRoute(
+                builder: (_) => const CompanionNotificationsPage(),
               );
             case '/login':
             default:

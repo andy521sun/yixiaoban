@@ -412,52 +412,110 @@ class _DoctorConsultationChatPageState extends State<DoctorConsultationChatPage>
     );
   }
 
+  final _quickReplies = [
+    '已收到您的问诊，请详细描述症状',
+    '建议先做一下相关检查',
+    '请注意休息，多喝水',
+    '如症状加重请及时就医',
+    '处方已开具，请查收',
+    '请按时服药，一周后复查',
+  ];
+
+  bool _showQuickReplies = false;
+
   Widget _buildInputBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, -2))],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  constraints: const BoxConstraints(maxHeight: 100),
-                  decoration: BoxDecoration(color: const Color(0xFFF1F3F4), borderRadius: BorderRadius.circular(20)),
-                  child: TextField(
-                    controller: _textController,
-                    textInputAction: TextInputAction.send,
-                    maxLines: null,
-                    decoration: const InputDecoration(
-                      hintText: '输入回复...',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 快捷回复
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: _showQuickReplies ? 36 : 0,
+          child: _showQuickReplies
+              ? SizedBox(
+                  height: 36,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _quickReplies.length,
+                    itemBuilder: (_, i) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        label: Text(_quickReplies[i], style: const TextStyle(fontSize: 12)),
+                        onPressed: () {
+                          _textController.text = _quickReplies[i];
+                          _textController.selection = TextSelection.fromPosition(
+                            TextPosition(offset: _quickReplies[i].length),
+                          );
+                          setState(() => _showQuickReplies = false);
+                        },
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ),
-                    onChanged: (_) => setState(() {}),
-                    onSubmitted: (v) => _sendMessage(v),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Material(
-                color: const Color(0xFF1A73E8),
-                shape: const CircleBorder(),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () => _sendMessage(_textController.text),
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                )
+              : const SizedBox.shrink(),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, -2))],
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => setState(() => _showQuickReplies = !_showQuickReplies),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(Icons.quickreply_outlined, color: const Color(0xFF1A73E8), size: 24),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 100),
+                      decoration: BoxDecoration(color: const Color(0xFFF1F3F4), borderRadius: BorderRadius.circular(20)),
+                      child: TextField(
+                        controller: _textController,
+                        textInputAction: TextInputAction.send,
+                        maxLines: null,
+                        decoration: const InputDecoration(
+                          hintText: '输入回复...',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: (v) => _sendMessage(v),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: const Color(0xFF1A73E8),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => _sendMessage(_textController.text),
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

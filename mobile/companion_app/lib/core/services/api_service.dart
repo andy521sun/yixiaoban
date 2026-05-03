@@ -160,6 +160,23 @@ class CompanionApiService {
     _channel = null;
   }
 
+  // ==================== 通知 ====================
+  Future<Map<String, dynamic>> getNotifications({int page = 1, int limit = 20, bool unreadOnly = false}) async {
+    if (_token == null) return {'success': false, 'data': {'notifications': [], 'pagination': {'total': 0}}};
+    final query = <String, String>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (unreadOnly) query['unread_only'] = 'true';
+    return _request('GET', '/realtime/notifications', query: query);
+  }
+
+  Future<Map<String, dynamic>> markNotificationRead({String? notificationId}) async {
+    if (_token == null) return {'success': false};
+    final body = notificationId != null ? <String, dynamic>{'notification_id': notificationId} : <String, dynamic>{};
+    return _request('POST', '/realtime/notifications/mark-read', body: body);
+  }
+
   void dispose() {
     disconnectWebSocket();
     _client.close();

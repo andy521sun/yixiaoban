@@ -83,6 +83,27 @@ class _CompanionHomePageState extends State<CompanionHomePage> {
       appBar: AppBar(
         title: Text(titles[_tab]),
         actions: [
+          // 通知
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                tooltip: '通知',
+                onPressed: () => Navigator.pushNamed(context, '/notifications'),
+              ),
+              if (state.notificationCount > 0)
+                Positioned(
+                  right: 6, top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(color: Color(0xFFDB4437), shape: BoxShape.circle),
+                    child: Text('${state.notificationCount}',
+                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           // 连接状态
           Container(
             margin: const EdgeInsets.only(right: 8),
