@@ -8,6 +8,7 @@ import Companions from '../views/Companions.vue'
 import DoctorCertifications from '../views/DoctorCertifications.vue'
 import Consultations from '../views/Consultations.vue'
 import Prescriptions from '../views/Prescriptions.vue'
+import ContentReports from '../views/ContentReports.vue'
 
 const routes = [
   {
@@ -57,6 +58,12 @@ const routes = [
     name: 'Prescriptions',
     component: Prescriptions,
     meta: { title: '处方管理', icon: 'DocumentCopy', requiresAuth: true }
+  },
+  {
+    path: '/content-reports',
+    name: 'ContentReports',
+    component: ContentReports,
+    meta: { title: '内容审核', icon: 'WarnTriangleFilled', requiresAuth: true }
   },
   {
     path: '/:pathMatch(.*)*',

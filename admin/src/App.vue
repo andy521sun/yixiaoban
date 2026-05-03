@@ -49,6 +49,11 @@
             <span>医生认证审核</span>
           </el-menu-item>
           
+          <el-menu-item index="/content-reports">
+            <el-icon><WarningFilled /></el-icon>
+            <span>内容审核</span>
+          </el-menu-item>
+          
           <el-menu-item index="/prescriptions">
             <el-icon><DocumentCopy /></el-icon>
             <span>处方管理</span>
@@ -166,7 +171,8 @@ import {
   ArrowDown,
   SwitchButton,
   ChatDotSquare,
-  Checked
+  Checked,
+  WarningFilled
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
