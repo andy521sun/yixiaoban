@@ -254,22 +254,8 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
       ),
       body: Column(
         children: [
-          // 状态栏
-          if (!isActive && _consultation != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: Colors.grey[100],
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 8),
-                  Text(_statusText(status),
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
+          // 状态栏 + 完成问诊操作
+          if (!isActive && _consultation != null) ..._buildCompletedActions(status),
 
           // 消息列表
           Expanded(
@@ -469,6 +455,210 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
       case 'rated': return '已评价';
       default: return '状态: $status';
     }
+  }
+
+  /// 已完成/已取消问诊状态栏 + 操作按钮
+  List<Widget> _buildCompletedActions(String status) {
+    final diagnosis = _consultation?['diagnosis'] as String?;
+    final hasRated = status == 'rated';
+    final rated = _consultation?['patient_rated'] == true || hasRated;
+
+    return [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        color: Colors.grey[100],
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(_statusText(status),
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+            ),
+            if (status == 'completed' && !rated)
+              TextButton.icon(
+                onPressed: _showRateDialog,
+                icon: const Icon(Icons.star_rate, size: 16, color: Color(0xFFE6A23C)),
+                label: const Text('评价', style: TextStyle(fontSize: 12, color: Color(0xFFE6A23C))),
+              ),
+            if (diagnosis != null && diagnosis.isNotEmpty)
+              TextButton.icon(
+                onPressed: () => _showDiagnosisDialog(),
+                icon: const Icon(Icons.description_outlined, size: 16, color: Color(0xFF1A73E8)),
+                label: const Text('诊断结果', style: TextStyle(fontSize: 12, color: Color(0xFF1A73E8))),
+              ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  void _showDiagnosisDialog() {
+    final diagnosis = _consultation?['diagnosis'] as String? ?? '';
+    final notes = _consultation?['notes'] as String? ?? '';
+    final price = _consultation?['price'] as num?;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.medical_information, color: Color(0xFF1A73E8), size: 22),
+            SizedBox(width: 8),
+            Text('问诊结果', style: TextStyle(fontSize: 17)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (diagnosis.isNotEmpty) ...[
+                  const Text('诊断结论', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(diagnosis, style: const TextStyle(fontSize: 13)),
+                  ),
+                ],
+                if (notes.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('医生嘱咐', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(notes, style: const TextStyle(fontSize: 13)),
+                  ),
+                ],
+                if (price != null && price > 0) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text('问诊费用', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      const Spacer(),
+                      Text('¥${price.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFDB4437)),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
+        ],
+      ),
+    );
+  }
+
+  void _showRateDialog() {
+    int rating = 5;
+    final reviewController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.star_rate, color: Color(0xFFE6A23C), size: 22),
+              SizedBox(width: 8),
+              Text('评价本次问诊', style: TextStyle(fontSize: 17)),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('医生服务怎么样？', style: TextStyle(fontSize: 14)),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (i) {
+                    final starIndex = i + 1;
+                    return IconButton(
+                      icon: Icon(
+                        starIndex <= rating ? Icons.star : Icons.star_border,
+                        color: const Color(0xFFE6A23C),
+                        size: 36,
+                      ),
+                      onPressed: () => setDlgState(() => rating = starIndex),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                Text('$rating 分', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE6A23C))),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: reviewController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: '说说你的就医体验（可选）',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final appState = context.read<AppState>();
+                final res = await appState.api.getConsultationDetail(_consultationId);
+                // 用 HTTP 直接调 rate 接口
+                try {
+                  final token = appState.token;
+                  final uri = Uri.parse('/api/consultations/$_consultationId/rate');
+                  final httpRes = await http.post(
+                    uri,
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': 'Bearer $token',
+                    },
+                    body: jsonEncode({'rating': rating, 'review': reviewController.text.trim()}),
+                  ).timeout(const Duration(seconds: 10));
+
+                  final data = jsonDecode(httpRes.body);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(data['message'] as String? ?? '评价成功'),
+                    backgroundColor: const Color(0xFF34A853),
+                  ));
+                  _loadConsultation();
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('评价失败，请重试'), backgroundColor: Colors.red),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE6A23C)),
+              child: const Text('提交评价'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showReportDialog() {
