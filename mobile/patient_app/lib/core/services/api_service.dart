@@ -190,4 +190,17 @@ class ApiService {
     final res = await _get('/doctors/$id');
     return res['success'] == true ? res['data'] as Map<String, dynamic>? : null;
   }
+
+  // ==================== 内容安全 ====================
+  Future<Map<String, dynamic>> submitReport(Map<String, dynamic> data) async {
+    if (_token == null) return {'success': false, 'message': '请先登录'};
+    return _post('/content/report', body: data);
+  }
+
+  Future<List<dynamic>> getMyReports() async {
+    if (_token == null) return [];
+    final res = await _get('/content/reports/my');
+    if (res['success'] == true) return res['data'] ?? [];
+    return [];
+  }
 }

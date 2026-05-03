@@ -239,6 +239,17 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
               );
             },
           ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (v) {
+              if (v == 'report') _showReportDialog();
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'report', child: Row(
+                children: [Icon(Icons.flag_outlined, size: 18, color: Colors.red), SizedBox(width: 8), Text('举报')],
+              )),
+            ],
+          ),
         ],
       ),
       body: Column(
@@ -459,6 +470,99 @@ class _ConsultationChatPageState extends State<ConsultationChatPage> {
       default: return '状态: $status';
     }
   }
+
+  void _showReportDialog() {
+    final reasonOptions = <String, String>{
+      'spam': '垃圾广告',
+      'harassment': '人身攻击',
+      'medical_misinfo': '医疗误导',
+      'porn': '色情违规',
+      'illegal': '违法违规',
+      'other': '其他',
+    };
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          String? selectedReason;
+          final descController = TextEditingController();
+
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.flag_outlined, color: Colors.red, size: 20),
+                SizedBox(width: 8),
+                Text('举报'),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('请选择举报原因：', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8, runSpacing: 8,
+                      children: reasonOptions.entries.map((e) => ChoiceChip(
+                        label: Text(e.value, style: const TextStyle(fontSize: 13)),
+                        selected: selectedReason == e.key,
+                        onSelected: (v) => setDlgState(() => selectedReason = v ? e.key : null),
+                      )).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: descController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: '详细描述（可选）',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.all(12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () async {
+                  if (selectedReason == null) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('请选择举报原因'), duration: Duration(seconds: 2)),
+                    );
+                    return;
+                  }
+                  Navigator.pop(ctx);
+
+                  final appState = context.read<AppState>();
+                  final res = await appState.api.submitReport({
+                    'target_type': 'consultation',
+                    'target_id': _consultationId,
+                    'reason': selectedReason,
+                    'description': descController.text.trim(),
+                  });
+
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(res['success'] == true ? '举报已提交，感谢您的反馈' : (res['message'] as String? ?? '提交失败')),
+                    backgroundColor: res['success'] == true ? const Color(0xFF34A853) : Colors.red,
+                  ));
+                },
+                child: const Text('提交举报'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _ChatMessage {
@@ -498,4 +602,5 @@ class _ChatMessage {
     );
   }
 }
+
 
