@@ -89,6 +89,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 Card(
                   child: Column(
                     children: [
+                      _menuItem(Icons.chat, '我的问诊', '/consultation/my-list'),
+                      const Divider(height: 1, indent: 56),
                       _menuItem(Icons.receipt_long, '我的订单', '/order/list'),
                       const Divider(height: 1, indent: 56),
                       _menuItem(Icons.favorite_border, '常用陪诊师', null),
