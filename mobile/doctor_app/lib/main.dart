@@ -8,6 +8,7 @@ import 'ui/pages/profile/profile_page.dart';
 import 'ui/pages/finance/finance_page.dart';
 import 'ui/pages/profile/service_pricing_page.dart';
 import 'ui/pages/consultation/consultation_chat_page_doctor.dart';
+import 'ui/pages/notifications/notifications_page.dart';
 
 void main() {
   runApp(const DoctorApp());
@@ -80,6 +81,8 @@ class DoctorApp extends StatelessWidget {
               return MaterialPageRoute(
                 builder: (_) => DoctorConsultationChatPage(consultationId: args['consultation_id'] as String),
               );
+            case '/notifications':
+              return MaterialPageRoute(builder: (_) => const DoctorNotificationsPage());
             default:
               return MaterialPageRoute(builder: (_) => const DoctorMainScaffold());
           }

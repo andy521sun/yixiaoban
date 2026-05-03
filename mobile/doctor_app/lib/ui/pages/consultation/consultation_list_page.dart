@@ -61,6 +61,12 @@ class _DoctorConsultationListPageState extends State<DoctorConsultationListPage>
       appBar: AppBar(
         title: Text('${state.doctorName}医生', style: const TextStyle(fontWeight: FontWeight.w600)),
         actions: [
+          // 通知
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: '通知',
+            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+          ),
           if (!state.isCertified)
             TextButton(
               onPressed: () => Navigator.pushNamed(context, '/certification'),
